@@ -59,6 +59,7 @@
                     <th>单词</th>
                     <th>词性</th>
                     <th>释义</th>
+                    <th>原文例句</th>
                     <th>状态</th>
                     <th>操作</th>
                 </tr>
@@ -73,6 +74,7 @@
                     </td>
                     <td>{{ w.pos }}</td>
                     <td class="definition-cell">{{ w.definition }}</td>
+                    <td class="example-cell">{% if w.input_example %}{{ w.input_example[:40] }}{% if w.input_example|length > 40 %}...{% endif %}{% else %}<span class="text-muted">-</span>{% endif %}</td>
                     <td>
                         {% if w.status == 'new' %}
                             <span class="tag tag-new">🆕</span>

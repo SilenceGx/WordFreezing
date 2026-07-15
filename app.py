@@ -93,7 +93,7 @@ def create_app():
         if not word:
             return jsonify({'success': False, 'message': '单词不存在'})
 
-        allowed_fields = {'word', 'pos', 'phonetic', 'definition', 'examples'}
+        allowed_fields = {'word', 'pos', 'phonetic', 'definition', 'examples', 'input_example'}
         updates = {}
         for key in allowed_fields:
             if key in data:

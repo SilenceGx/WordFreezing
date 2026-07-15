@@ -34,7 +34,8 @@
       "Bash(git commit -m 'feat: 新增翻译模式 — 阅读生词学习流程 *)",
       "Bash(curl -s -X POST http://127.0.0.1:5000/wordbook/create -d \"name=TestWB&mode=writing\")",
       "Bash(curl -s -X POST http://127.0.0.1:5000/wordbook/7/words/batch -d \"action=mastered&word_ids[]=1\")",
-      "Bash(curl -s http://127.0.0.1:5000/wordbook/3)"
+      "Bash(curl -s http://127.0.0.1:5000/wordbook/3)",
+      "Bash(git commit *)"
     ]
   }
 }

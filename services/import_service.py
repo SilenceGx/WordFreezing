@@ -331,6 +331,7 @@ def confirm_import(wordbook_id, results):
             'phonetic': r.get('phonetic', ''),
             'definition': r.get('definition', ''),
             'examples': r.get('examples', []),
+            'input_example': r.get('input_example', ''),
         })
 
     if words_data:

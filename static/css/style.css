@@ -297,6 +297,8 @@ body {
 .word-cell strong { font-size: 1rem; }
 .phonetic { color: var(--text-secondary); font-size: 0.85rem; margin-left: 6px; }
 .definition-cell { max-width: 250px; color: var(--text-secondary); font-size: 0.9rem; }
+.example-cell { max-width: 200px; font-size: 0.85rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.text-muted { color: var(--text-secondary); }
 .action-cell { display: flex; gap: 4px; }
 
 .status-mastered { opacity: 0.7; }
