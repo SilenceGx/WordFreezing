@@ -149,6 +149,10 @@ document.querySelectorAll('.word-checkbox').forEach(cb => {
 
 function batchAction(action) {
     const form = document.getElementById('batchForm');
+    // 清除之前可能残留的 action input
+    const existing = form.querySelector('input[name="action"]');
+    if (existing) existing.remove();
+
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'action';
@@ -161,7 +165,8 @@ function batchAction(action) {
         .then(res => {
             if (res.success) location.reload();
             else alert(res.message);
-        });
+        })
+        .catch(err => alert('操作失败: ' + err.message));
 }
 
 function editWordbookName() {

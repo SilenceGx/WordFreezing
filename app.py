@@ -360,10 +360,9 @@ def create_app():
         if not words:
             return jsonify({'success': False, 'message': '未识别到有效单词'})
 
-        # 如果选择新词本，先创建
+        # 如果选择新词本，先创建（默认造句模式，翻译模式请在首页先建词本再导入）
         if wordbook_id == 0 and new_wordbook_name:
-            mode = request.form.get('mode', 'writing')
-            wordbook_id = WordbookModel.create(new_wordbook_name, mode=mode)
+            wordbook_id = WordbookModel.create(new_wordbook_name, mode='writing')
 
         if not wordbook_id:
             return jsonify({'success': False, 'message': '请选择或创建词本'})
