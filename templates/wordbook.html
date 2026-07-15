@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}{{ wordbook.name }} - 词本总览{% endblock %}
+
+{% block content %}
+<div class="wordbook-page">
+    <!-- 词本头部 -->
+    <div class="wordbook-header">
+        <a href="{{ url_for('index') }}" class="back-link">← 首页</a>
+        <div class="wordbook-header-info">
+            <h1>📖 {{ wordbook.name }}</h1>
+            <p class="wordbook-summary">
+                总计 {{ wordbook.total }} 词 |
+                🆕 {{ wordbook.new_count }} 待学 |
+                📝 {{ wordbook.learning_count }} 进行中 |
+                ✅ {{ wordbook.mastered_count }} 已斩
+            </p>
+        </div>
+        <div class="wordbook-header-actions">
+            <button class="btn btn-outline" onclick="editWordbookName()">✏️ 编辑</button>
+            <a href="{{ url_for('learn', wordbook_id=wordbook.id) }}" class="btn btn-primary">▶ 开始学习</a>
+            <a href="{{ url_for('import_page') }}?wordbook_id={{ wordbook.id }}" class="btn btn-outline">📥 导入追加</a>
+            <div class="dropdown">
+                <button class="btn btn-outline" onclick="toggleExport()">📤 导出 ▾</button>
+                <div class="dropdown-menu" id="exportMenu" style="display:none">
+                    <a href="{{ url_for('wordbook_export', wordbook_id=wordbook.id, fmt='json') }}" class="dropdown-item">JSON 格式</a>
+                    <a href="{{ url_for('wordbook_export', wordbook_id=wordbook.id, fmt='csv') }}" class="dropdown-item">CSV 格式 (Excel)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索和筛选 -->
+    <div class="wordbook-toolbar">
+        <form class="search-form" method="GET" action="{{ url_for('wordbook_detail', wordbook_id=wordbook.id) }}">
+            <input type="text" name="search" placeholder="搜索单词..." value="{{ search }}" class="search-input">
+            <select name="status" class="filter-select" onchange="this.form.submit()">
+                <option value="">全部状态</option>
+                <option value="new" {% if filter_status == 'new' %}selected{% endif %}>🆕 待学</option>
+                <option value="learning" {% if filter_status == 'learning' %}selected{% endif %}>📝 进行中</option>
+                <option value="mastered" {% if filter_status == 'mastered' %}selected{% endif %}>✅ 已斩</option>
+            </select>
+        </form>
+    </div>
+
+    <!-- 单词表格 -->
+    {% if data.words %}
+    <form id="batchForm" method="POST" action="{{ url_for('words_batch', wordbook_id=wordbook.id) }}">
+        <table class="word-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()"></th>
+                    <th>单词</th>
+                    <th>词性</th>
+                    <th>释义</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in data.words %}
+                <tr class="word-row status-{{ w.status }}">
+                    <td><input type="checkbox" name="word_ids[]" value="{{ w.id }}" class="word-checkbox"></td>
+                    <td class="word-cell">
+                        <strong>{{ w.word }}</strong>
+                        <span class="phonetic">{{ w.phonetic }}</span>
+                    </td>
+                    <td>{{ w.pos }}</td>
+                    <td class="definition-cell">{{ w.definition }}</td>
+                    <td>
+                        {% if w.status == 'new' %}
+                            <span class="tag tag-new">🆕</span>
+                        {% elif w.status == 'learning' %}
+                            <span class="tag tag-learning">📝</span>
+                        {% elif w.status == 'mastered' %}
+                            <span class="tag tag-mastered">✅</span>
+                        {% endif %}
+                    </td>
+                    <td class="action-cell">
+                        {% if w.status != 'mastered' %}
+                        <form method="POST" action="{{ url_for('learn_skip') }}" style="display:inline">
+                            <input type="hidden" name="word_id" value="{{ w.id }}">
+                            <button type="button" class="btn-sm btn-success" onclick="markMastered({{ w.id }})">斩</button>
+                        </form>
+                        {% endif %}
+                        {% if w.status == 'mastered' %}
+                        <button class="btn-sm btn-outline" onclick="resetWord({{ w.id }})">恢复</button>
+                        {% endif %}
+                        <button class="btn-sm btn-danger" onclick="deleteWord({{ w.id }})">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 批量操作 -->
+        <div class="batch-actions">
+            <span id="selectedCount">已选 0 项</span>
+            <button type="button" class="btn btn-outline" onclick="batchAction('mastered')">批量斩</button>
+            <button type="button" class="btn btn-outline" onclick="batchAction('reset')">批量恢复</button>
+            <button type="button" class="btn btn-danger" onclick="batchAction('delete')">批量删除</button>
+        </div>
+    </form>
+
+    <!-- 分页 -->
+    {% if data.total_pages > 1 %}
+    <div class="pagination">
+        {% if data.page > 1 %}
+        <a href="?page={{ data.page - 1 }}&search={{ search }}&status={{ filter_status }}" class="page-link">←</a>
+        {% endif %}
+        {% for p in range(1, data.total_pages + 1) %}
+        <a href="?page={{ p }}&search={{ search }}&status={{ filter_status }}"
+           class="page-link {% if p == data.page %}active{% endif %}">{{ p }}</a>
+        {% endfor %}
+        {% if data.page < data.total_pages %}
+        <a href="?page={{ data.page + 1 }}&search={{ search }}&status={{ filter_status }}" class="page-link">→</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p>词本中还没有单词</p>
+        <a href="{{ url_for('import_page') }}" class="btn btn-primary">导入单词</a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleAllCheckboxes() {
+    const checked = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.word-checkbox').forEach(cb => cb.checked = checked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const count = document.querySelectorAll('.word-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = `已选 ${count} 项`;
+}
+
+document.querySelectorAll('.word-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelectedCount);
+});
+
+function batchAction(action) {
+    const form = document.getElementById('batchForm');
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'action';
+    input.value = action;
+    form.appendChild(input);
+
+    const data = new FormData(form);
+    fetch(form.action, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) location.reload();
+            else alert(res.message);
+        });
+}
+
+function editWordbookName() {
+    const name = prompt('输入新名称:', '{{ wordbook.name }}');
+    if (name && name.trim()) {
+        const data = new FormData();
+        data.append('name', name.trim());
+        fetch('{{ url_for("wordbook_edit", wordbook_id=wordbook.id) }}', { method: 'POST', body: data })
+            .then(r => r.json())
+            .then(res => { if (res.success) location.reload(); });
+    }
+}
+
+function markMastered(wordId) {
+    if (!confirm('标记为已掌握？')) return;
+    fetch('{{ url_for("learn_skip") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word_id: wordId})
+    }).then(r => r.json()).then(res => { if (res.success) location.reload(); });
+}
+
+function resetWord(wordId) {
+    if (!confirm('恢复为新词？')) return;
+    fetch('/api/learn/reset', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word_id: wordId})
+    }).then(r => r.json()).then(res => { if (res.success) location.reload(); });
+}
+
+function deleteWord(wordId) {
+    if (!confirm('确定删除？')) return;
+    const data = new FormData();
+    data.append('word_id', wordId);
+    fetch('/word/' + wordId + '/delete', { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => { if (res.success) location.reload(); });
+}
+
+function toggleExport() {
+    const menu = document.getElementById('exportMenu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown')) {
+        document.getElementById('exportMenu').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

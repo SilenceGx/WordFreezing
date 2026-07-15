@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+{% block title %}学习 - {{ wordbook.name }}{% endblock %}
+
+{% block content %}
+<div class="learn-page">
+    <!-- 顶部导航 -->
+    <div class="learn-header">
+        <a href="{{ url_for('wordbook_detail', wordbook_id=wordbook.id) }}" class="back-link">← {{ wordbook.name }}</a>
+        <span class="learn-progress" id="progressInfo">加载中...</span>
+    </div>
+
+    <!-- 卡片区域 -->
+    <div class="learn-card" id="wordCard">
+        <!-- 加载中 -->
+        <div class="learn-loading" id="learnLoading">
+            <div class="spinner"></div>
+            <p>加载下一个单词...</p>
+        </div>
+
+        <!-- 单词展示 -->
+        <div class="word-display" id="wordDisplay" style="display:none">
+            <div class="word-main">
+                <h1 class="word-text" id="wordText">recommend</h1>
+                <p class="word-phonetic" id="wordPhonetic">/ˈrekəmend/</p>
+                <p class="word-pos" id="wordPos">v.</p>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="sentence-area">
+                <textarea id="sentenceInput" rows="3"
+                    placeholder='用这个单词造一个句子...'
+                    autofocus></textarea>
+            </div>
+
+            <!-- 按钮 -->
+            <div class="learn-actions">
+                <button class="btn btn-primary btn-lg" id="submitBtn" onclick="submitSentence()">
+                    提交句子
+                </button>
+                <button class="btn btn-outline btn-lg" id="skipBtn" onclick="skipWord()">
+                    ✅ 已掌握
+                </button>
+                <button class="btn btn-danger btn-lg" id="dontKnowBtn" onclick="dontKnowWord()">
+                    ❌ 不认识
+                </button>
+            </div>
+        </div>
+
+        <!-- 评判结果 -->
+        <div class="judge-result" id="judgeResult" style="display:none">
+            <!-- 初始评判内容（通过/不通过） -->
+            <div id="judgeInitialContent">
+                <div class="judge-icon" id="judgeIcon">✅</div>
+                <div class="judge-message" id="judgeMessage"></div>
+                <div class="judge-detail" id="judgeDetail"></div>
+
+                <!-- 例句学习（不通过时展示） -->
+                <div class="examples-section" id="examplesSection" style="display:none">
+                    <h4>📖 例句学习</h4>
+                    <ul class="example-list" id="exampleList"></ul>
+                </div>
+
+                <!-- 重试入口（不通过/不认识后展示 — 点击回到单词展示页再答一次） -->
+                <div class="retry-entry" id="retryEntry" style="display:none">
+                    <hr>
+                    <p class="retry-hint">学习上面的例句后，点击按钮在不看答案的情况下再写一次</p>
+                    <button class="btn btn-primary btn-lg" onclick="startRetry()">✍️ 再试一次</button>
+                </div>
+            </div>
+
+            <!-- 重试结果（提交第二次后展示，替换初始内容） -->
+            <div class="retry-result" id="retryResult" style="display:none">
+                <hr>
+                <div class="judge-icon" id="retryIcon">✅</div>
+                <div class="judge-message" id="retryMessage"></div>
+                <div class="judge-detail" id="retryDetail"></div>
+            </div>
+
+            <button class="btn btn-primary btn-lg" id="continueBtn" onclick="nextWord()" style="display:none">
+                继续 →
+            </button>
+        </div>
+    </div>
+
+    <!-- # 斩动画 -->
+    <div class="slash-effect" id="slashEffect" style="display:none">
+        <div class="slash-text">斩！🎉</div>
+    </div>
+</div>
+
+<script>
+let currentWordId = null;
+let currentMode = null;
+let isLoading = false;
+let isRetryMode = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadNextWord();
+});
+
+function loadNextWord() {
+    isLoading = true;
+    isRetryMode = false;
+    document.getElementById('learnLoading').style.display = 'flex';
+    document.getElementById('wordDisplay').style.display = 'none';
+    document.getElementById('judgeResult').style.display = 'none';
+    // 重置所有子容器的显示状态，防止残留
+    document.getElementById('judgeInitialContent').style.display = '';
+    document.getElementById('retryResult').style.display = 'none';
+    document.getElementById('progressInfo').textContent = '加载中...';
+
+    fetch('/api/learn/next/{{ wordbook.id }}')
+        .then(r => r.json())
+        .then(data => {
+            if (data.done) {
+                showDone(data.message);
+                return;
+            }
+
+            const word = data.word;
+            currentWordId = word.id;
+            currentMode = data.mode;
+
+            document.getElementById('wordText').textContent = word.word;
+            document.getElementById('wordPhonetic').textContent = word.phonetic || '';
+            document.getElementById('wordPos').textContent = word.pos || '';
+            document.getElementById('sentenceInput').placeholder =
+                '用 "' + word.word + '" 造一个句子...';
+
+            document.getElementById('progressInfo').textContent =
+                (data.mode === 'review' ? '📝 复习' : '🆕 新词') + ': ' + word.word;
+
+            // 非重试模式，显示所有按钮
+            document.getElementById('skipBtn').style.display = '';
+            document.getElementById('dontKnowBtn').style.display = '';
+
+            document.getElementById('learnLoading').style.display = 'none';
+            document.getElementById('wordDisplay').style.display = 'block';
+            document.getElementById('sentenceInput').value = '';
+            document.getElementById('sentenceInput').disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '提交句子';
+            document.getElementById('skipBtn').disabled = false;
+            document.getElementById('dontKnowBtn').disabled = false;
+            document.getElementById('sentenceInput').focus();
+            isLoading = false;
+        })
+        .catch(err => {
+            console.error(err);
+            isLoading = false;
+        });
+}
+
+function submitSentence() {
+    if (isLoading) return;
+
+    // 重试模式走 retry 提交逻辑
+    if (isRetryMode) {
+        doRetrySubmit();
+        return;
+    }
+
+    const sentence = document.getElementById('sentenceInput').value.trim();
+    if (!sentence) {
+        alert('请先写一个句子！');
+        return;
+    }
+
+    isLoading = true;
+    document.getElementById('sentenceInput').disabled = true;
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').textContent = '评判中...';
+
+    fetch('/api/learn/submit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word_id: currentWordId, sentence: sentence})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert('AI 评判失败: ' + data.error);
+            document.getElementById('sentenceInput').disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('dontKnowBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '提交句子';
+            isLoading = false;
+            return;
+        }
+
+        showJudgeResult(data);
+        isLoading = false;
+    })
+    .catch(err => {
+        alert('请求失败: ' + err.message);
+        document.getElementById('sentenceInput').disabled = false;
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('dontKnowBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = '提交句子';
+        isLoading = false;
+    });
+}
+
+function showJudgeResult(data) {
+    document.getElementById('wordDisplay').style.display = 'none';
+    document.getElementById('judgeResult').style.display = 'block';
+    // 重置 judegInitialContent 可见（防止前一次重试时被隐藏后未恢复）
+    document.getElementById('judgeInitialContent').style.display = '';
+
+    // 隐藏重试相关元素
+    document.getElementById('retryEntry').style.display = 'none';
+    document.getElementById('retryResult').style.display = 'none';
+    document.getElementById('continueBtn').style.display = 'none';
+
+    if (data.passed) {
+        document.getElementById('judgeIcon').textContent = '✅';
+        document.getElementById('judgeMessage').textContent = '🎉 通过！';
+        document.getElementById('judgeDetail').textContent = data.judge.message || '句子自然地道！';
+        document.getElementById('examplesSection').style.display = 'none';
+        document.getElementById('continueBtn').style.display = 'inline-flex';
+
+        // 斩动画
+        if (data.review.status === 'mastered') {
+            showSlashEffect();
+        }
+    } else {
+        document.getElementById('judgeIcon').textContent = '❌';
+        document.getElementById('judgeMessage').textContent = '不够地道';
+        // 先展示单词含义，再展示评判意见和例句
+        var wordInfoHtml = '';
+        if (data.word) {
+            wordInfoHtml = '<div class="word-info-box">' +
+                '<strong>' + (data.word.word || '') + '</strong>' +
+                (data.word.phonetic ? ' <span class="phonetic">' + data.word.phonetic + '</span>' : '') +
+                (data.word.pos ? ' <span class="pos">' + data.word.pos + '</span>' : '') +
+                (data.word.definition ? '<br><strong>释义:</strong> ' + data.word.definition : '') +
+                '</div><br>';
+        }
+        var feedbackHtml = (data.judge.message || '');
+        document.getElementById('judgeDetail').innerHTML = wordInfoHtml + feedbackHtml;
+
+        // 展示例句学习
+        showExamples(data.word);
+        // 显示"再试一次"按钮（点击后回到单词展示页，看不到答案）
+        document.getElementById('retryEntry').style.display = 'block';
+    }
+
+    document.getElementById('submitBtn').textContent = '提交句子';
+}
+
+/**
+ * 展示例句列表
+ */
+function showExamples(word) {
+    if (word && word.examples && word.examples.length > 0) {
+        document.getElementById('examplesSection').style.display = 'block';
+        const list = document.getElementById('exampleList');
+        list.innerHTML = '';
+        word.examples.forEach(function(ex, i) {
+            const li = document.createElement('li');
+            li.textContent = (i + 1) + '. ' + ex;
+            list.appendChild(li);
+        });
+    } else {
+        document.getElementById('examplesSection').style.display = 'none';
+    }
+}
+
+/**
+ * 开始重试 — 回到单词展示页（仅显示单词、音标、词性，不含答案）
+ */
+function startRetry() {
+    isRetryMode = true;
+
+    // 隐藏评判结果，回到单词展示
+    document.getElementById('judgeResult').style.display = 'none';
+    document.getElementById('wordDisplay').style.display = 'block';
+
+    // 清理输入框，恢复按钮状态
+    document.getElementById('sentenceInput').value = '';
+    document.getElementById('sentenceInput').disabled = false;
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitBtn').textContent = '提交句子';
+
+    // 重试模式下隐藏"已掌握"和"不认识"按钮 — 只让造句
+    document.getElementById('skipBtn').style.display = 'none';
+    document.getElementById('dontKnowBtn').style.display = 'none';
+
+    document.getElementById('progressInfo').textContent =
+        '✍️ 再试一次: ' + document.getElementById('wordText').textContent;
+
+    document.getElementById('sentenceInput').focus();
+}
+
+/**
+ * 重试提交 — 隐藏在 submitSentence() 中，通过 isRetryMode 转发到此
+ */
+function doRetrySubmit() {
+    if (isLoading) return;
+    const sentence = document.getElementById('sentenceInput').value.trim();
+    if (!sentence) {
+        alert('请先写一个句子！');
+        return;
+    }
+
+    isLoading = true;
+    document.getElementById('sentenceInput').disabled = true;
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').textContent = '评判中...';
+
+    fetch('/api/learn/submit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word_id: currentWordId, sentence: sentence})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) {
+            alert('AI 评判失败: ' + data.error);
+            document.getElementById('sentenceInput').disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '提交句子';
+            isLoading = false;
+            return;
+        }
+
+        // 隐藏单词展示，展示重试结果（替换初始评判内容）
+        document.getElementById('wordDisplay').style.display = 'none';
+        document.getElementById('judgeInitialContent').style.display = 'none';
+        document.getElementById('judgeResult').style.display = 'block';
+        document.getElementById('retryResult').style.display = 'block';
+        document.getElementById('continueBtn').style.display = 'inline-flex';
+
+        if (data.passed) {
+            document.getElementById('retryIcon').textContent = '✅';
+            document.getElementById('retryMessage').textContent = '通过！正确加一 💪';
+            document.getElementById('retryDetail').textContent = data.judge.message || '句子自然地道！';
+        } else {
+            document.getElementById('retryIcon').textContent = '❌';
+            document.getElementById('retryMessage').textContent = '不通过';
+            var retryHtml = (data.judge.message || '');
+            document.getElementById('retryDetail').innerHTML = retryHtml;
+        }
+
+        document.getElementById('submitBtn').textContent = '提交句子';
+        isLoading = false;
+    })
+    .catch(function(err) {
+        alert('请求失败: ' + err.message);
+        document.getElementById('sentenceInput').disabled = false;
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = '提交句子';
+        isLoading = false;
+    });
+}
+
+function skipWord() {
+    if (!confirm('标记为已掌握，跳过造句？')) return;
+
+    isLoading = true;
+    fetch('/api/learn/skip', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word_id: currentWordId})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSlashEffect();
+            setTimeout(loadNextWord, 800);
+        }
+    })
+    .catch(err => {
+        isLoading = false;
+    });
+}
+
+function dontKnowWord() {
+    if (isLoading) return;
+    isLoading = true;
+
+    document.getElementById('sentenceInput').disabled = true;
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('skipBtn').disabled = true;
+    document.getElementById('dontKnowBtn').disabled = true;
+
+    fetch('/api/learn/dont-know', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({word_id: currentWordId})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert('操作失败: ' + data.error);
+            isLoading = false;
+            return;
+        }
+
+        // 显示评判结果区域（学习材料）
+        document.getElementById('wordDisplay').style.display = 'none';
+        document.getElementById('judgeResult').style.display = 'block';
+
+        document.getElementById('retryEntry').style.display = 'none';
+        document.getElementById('retryResult').style.display = 'none';
+        document.getElementById('continueBtn').style.display = 'none';
+
+        document.getElementById('judgeIcon').textContent = '📖';
+        document.getElementById('judgeMessage').textContent = '先学习一下这个单词';
+        document.getElementById('judgeDetail').innerHTML =
+            '<strong>释义:</strong> ' + (data.word.definition || '暂无') +
+            '<br><strong>词性:</strong> ' + (data.word.pos || '') +
+            ' <strong>音标:</strong> ' + (data.word.phonetic || '');
+
+        // 展示例句学习
+        showExamples(data.word);
+        // 显示"再试一次"按钮（不看答案再写一次）
+        document.getElementById('retryEntry').style.display = 'block';
+
+        isLoading = false;
+    })
+    .catch(function(err) {
+        alert('请求失败: ' + err.message);
+        isLoading = false;
+    });
+}
+
+function nextWord() {
+    loadNextWord();
+}
+
+function showSlashEffect() {
+    const el = document.getElementById('slashEffect');
+    el.style.display = 'flex';
+    setTimeout(() => {
+        el.style.display = 'none';
+    }, 1000);
+}
+
+function showDone(message) {
+    document.getElementById('learnLoading').style.display = 'none';
+    document.getElementById('wordDisplay').style.display = 'none';
+    document.getElementById('judgeResult').style.display = 'none';
+
+    document.getElementById('wordCard').innerHTML = `
+        <div class="done-state">
+            <div class="done-icon">🎉</div>
+            <h2>完成！</h2>
+            <p>${message}</p>
+            <a href="{{ url_for('wordbook_detail', wordbook_id=wordbook.id) }}" class="btn btn-primary">
+                返回词本
+            </a>
+        </div>
+    `;
+    document.getElementById('progressInfo').textContent = '已完成';
+}
+
+// Enter 键提交（初始和重试共用 #sentenceInput）
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        const input = document.getElementById('sentenceInput');
+        if (document.activeElement === input && !input.disabled) {
+            e.preventDefault();
+            submitSentence();
+        }
+    }
+});
+</script>
+{% endblock %}

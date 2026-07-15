@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}WordFreezing - 首页{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- 今日待复习提示 -->
+    <div class="review-banner">
+        <div class="review-banner-content">
+            <span class="review-icon">📚</span>
+            <div>
+                <strong>今日待复习: {{ today_count }} 个单词</strong>
+                <p>先复习再学新词，巩固记忆效果更好 ✨</p>
+            </div>
+            {% if today_count > 0 %}
+                <a href="{{ url_for('learn', wordbook_id=wordbooks[0]['id']) if wordbooks else '#' }}"
+                   class="btn btn-primary">开始复习 →</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 词本列表 -->
+    <div class="section">
+        <div class="section-header">
+            <h2>📖 我的词本</h2>
+            <div class="section-actions">
+                <button class="btn btn-outline" onclick="showCreateWordbook()">➕ 创建新词本</button>
+                <a href="{{ url_for('import_page') }}" class="btn btn-outline">📥 导入词本</a>
+            </div>
+        </div>
+
+        {% if wordbooks %}
+        <div class="wordbook-grid">
+            {% for wb in wordbooks %}
+            <a href="{{ url_for('wordbook_detail', wordbook_id=wb.id) }}" class="wordbook-card">
+                <div class="wordbook-card-header">
+                    <h3>📖 {{ wb.name }}</h3>
+                    <span class="wordbook-count">{{ wb.total }} 词</span>
+                </div>
+                <div class="wordbook-stats-bar">
+                    {% set total = (wb.total | int) or 1 %}
+                    {% set new_c = wb.new_count | int %}
+                    {% set learn_c = wb.learning_count | int %}
+                    {% set master_c = wb.mastered_count | int %}
+                    <div class="progress-bar">
+                        <div class="progress-new" style="width: {{ (new_c / total * 100) | round }}%"></div>
+                        <div class="progress-learning" style="width: {{ (learn_c / total * 100) | round }}%"></div>
+                        <div class="progress-mastered" style="width: {{ (master_c / total * 100) | round }}%"></div>
+                    </div>
+                </div>
+                <div class="wordbook-stats">
+                    <span class="tag tag-new">🆕 {{ new_c }}</span>
+                    <span class="tag tag-learning">📝 {{ learn_c }}</span>
+                    <span class="tag tag-mastered">✅ {{ master_c }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>还没有词本，开始创建或导入吧！</p>
+            <div class="empty-actions">
+                <button class="btn btn-primary" onclick="showCreateWordbook()">创建新词本</button>
+                <a href="{{ url_for('import_page') }}" class="btn btn-outline">导入词本</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 全局统计 -->
+    <div class="section">
+        <div class="section-header">
+            <h2>📊 学习总览</h2>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.total or 0 }}</span>
+                <span class="stat-label">总词数</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.new_count or 0 }}</span>
+                <span class="stat-label">待学习</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.learning_count or 0 }}</span>
+                <span class="stat-label">进行中</span>
+            </div>
+            <div class="stat-card stat-card-mastered">
+                <span class="stat-value">{{ stats.mastered_count or 0 }}</span>
+                <span class="stat-label">✅ 已斩</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 创建词本弹窗 -->
+<div class="modal-overlay" id="createModal" style="display:none" onclick="hideModal(event)">
+    <div class="modal">
+        <h3>创建新词本</h3>
+        <form id="createWordbookForm" onsubmit="createWordbook(event)">
+            <input type="text" name="name" placeholder="输入词本名称..." required autofocus>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="hideModal(event)">取消</button>
+                <button type="submit" class="btn btn-primary">创建</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showCreateWordbook() {
+    document.getElementById('createModal').style.display = 'flex';
+    document.querySelector('#createModal input').focus();
+}
+
+function hideModal(e) {
+    if (e.target === e.currentTarget || e.target.tagName === 'BUTTON' && e.target.type === 'button') {
+        document.getElementById('createModal').style.display = 'none';
+    }
+}
+
+function createWordbook(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+
+    fetch('{{ url_for("wordbook_create") }}', { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                location.reload();
+            } else {
+                alert(res.message);
+            }
+        });
+}
+</script>
+{% endblock %}

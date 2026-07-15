@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}统计 - WordFreezing{% endblock %}
+
+{% block content %}
+<div class="stats-page">
+    <h1>📊 学习统计</h1>
+
+    <!-- 概览卡片 -->
+    <div class="stats-grid">
+        <div class="stat-card stat-card-accent">
+            <span class="stat-value">{{ global_stats.total or 0 }}</span>
+            <span class="stat-label">总词数</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ global_stats.new_count or 0 }}</span>
+            <span class="stat-label">待学习 🆕</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ global_stats.learning_count or 0 }}</span>
+            <span class="stat-label">进行中 📝</span>
+        </div>
+        <div class="stat-card stat-card-mastered">
+            <span class="stat-value">{{ global_stats.mastered_count or 0 }}</span>
+            <span class="stat-label">已斩 ✅</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_days or 0 }}</span>
+            <span class="stat-label">学习天数 📅</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ global_stats.mastered_count or 0 }}</span>
+            <span class="stat-label">今日学习 🔥</span>
+        </div>
+    </div>
+
+    <!-- 词本进度 -->
+    <div class="section">
+        <h2>各词本进度</h2>
+        {% if wordbooks %}
+        <div class="wordbook-progress-list">
+            {% for wb in wordbooks %}
+            <div class="wordbook-progress-item">
+                <div class="progress-item-header">
+                    <a href="{{ url_for('wordbook_detail', wordbook_id=wb.id) }}" class="progress-wordbook-name">
+                        📖 {{ wb.name }}
+                    </a>
+                    <span class="progress-total">{{ wb.total }} 词</span>
+                </div>
+                {% set total = (wb.total | int) or 1 %}
+                {% set new_c = wb.new_count | int %}
+                {% set learn_c = wb.learning_count | int %}
+                {% set master_c = wb.mastered_count | int %}
+                <div class="progress-bar">
+                    <div class="progress-new" style="width: {{ (new_c / total * 100) | round }}%"></div>
+                    <div class="progress-learning" style="width: {{ (learn_c / total * 100) | round }}%"></div>
+                    <div class="progress-mastered" style="width: {{ (master_c / total * 100) | round }}%"></div>
+                </div>
+                <div class="progress-item-stats">
+                    <span class="tag tag-new">🆕 {{ new_c }}</span>
+                    <span class="tag tag-learning">📝 {{ learn_c }}</span>
+                    <span class="tag tag-mastered">✅ {{ master_c }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>还没有数据，开始学习吧！</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

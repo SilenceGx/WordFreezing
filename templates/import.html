@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}导入词本{% endblock %}
+
+{% block content %}
+<div class="import-page">
+    <h1>📥 导入词本</h1>
+
+    <!-- 导入方式切换 -->
+    <div class="import-tabs">
+        <button class="tab-btn active" data-tab="file" onclick="switchTab('file')">📄 TXT 文件导入</button>
+        <button class="tab-btn" data-tab="manual" onclick="switchTab('manual')">✏️ 手动输入</button>
+    </div>
+
+    <!-- 表单 -->
+    <form id="importForm" onsubmit="previewImport(event)">
+        <!-- 目标词本 -->
+        <div class="form-group">
+            <label>导入到词本:</label>
+            <select name="wordbook_id" id="wordbookSelect" onchange="toggleNewWordbook()">
+                <option value="0">创建新词本</option>
+                {% for wb in wordbooks %}
+                <option value="{{ wb.id }}"
+                    {% if request.args.get('wordbook_id')|string == wb.id|string %}selected{% endif %}>
+                    {{ wb.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" id="newWordbookGroup">
+            <label>新词本名称:</label>
+            <input type="text" name="new_wordbook_name" placeholder="输入新词本名称..." autofocus>
+        </div>
+
+        <!-- TXT 文件 -->
+        <div class="tab-content active" id="tab-file">
+            <div class="form-group">
+                <label>选择 TXT 文件 (每行一个单词)</label>
+                <input type="file" name="file" accept=".txt" class="file-input">
+                <div class="dropzone" onclick="document.querySelector('[name=file]').click()">
+                    <p>拖拽或点击上传 TXT 文件</p>
+                    <p class="hint">每行一个英文单词</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 手动输入 -->
+        <div class="tab-content" id="tab-manual" style="display:none">
+            <div class="form-group">
+                <label>输入单词（用逗号、空格或换行分隔）</label>
+                <textarea name="words_text" rows="8"
+                    placeholder="例如:&#10;abandon&#10;ability&#10;about, above, abroad&#10;accept accident according"></textarea>
+            </div>
+        </div>
+
+        <input type="hidden" name="method" id="methodInput" value="file">
+        <button type="submit" class="btn btn-primary btn-lg">预览 →</button>
+    </form>
+
+    <!-- 预览结果 -->
+    <div class="preview-section" id="previewSection" style="display:none">
+        <h2>预览: 共 <span id="previewTotal">0</span> 个单词</h2>
+        <div class="preview-stats">
+            <span class="tag tag-new">📖 词典匹配: <span id="dictCount">0</span></span>
+            <span class="tag tag-learning">🤖 AI 补全: <span id="aiCount">0</span></span>
+        </div>
+
+        <div class="preview-table-wrapper">
+            <table class="preview-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>单词</th>
+                        <th>词性</th>
+                        <th>音标</th>
+                        <th>释义</th>
+                        <th>来源</th>
+                    </tr>
+                </thead>
+                <tbody id="previewBody"></tbody>
+            </table>
+        </div>
+
+        <div class="preview-actions">
+            <button class="btn btn-outline" onclick="cancelImport()">取消</button>
+            <button class="btn btn-primary btn-lg" onclick="confirmImport()">✅ 确认导入</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let importResults = [];
+let importWordbookId = null;
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    document.getElementById('tab-' + tab).style.display = 'block';
+    document.getElementById('methodInput').value = tab;
+}
+
+function toggleNewWordbook() {
+    const val = document.getElementById('wordbookSelect').value;
+    document.getElementById('newWordbookGroup').style.display = val === '0' ? 'block' : 'none';
+}
+
+// 文件选择时显示文件名
+document.addEventListener('change', function(e) {
+    if (e.target.matches('[name=file]')) {
+        const file = e.target.files[0];
+        if (file) {
+            document.querySelector('.dropzone p:first-child').textContent = '📄 ' + file.name;
+        }
+    }
+});
+
+function previewImport(e) {
+    e.preventDefault();
+    const form = document.getElementById('importForm');
+    const data = new FormData(form);
+
+    fetch('{{ url_for("import_preview") }}', { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) {
+                alert(res.message);
+                return;
+            }
+
+            importResults = res.results;
+            importWordbookId = res.wordbook_id;
+
+            document.getElementById('previewTotal').textContent = res.total;
+
+            const dictCount = res.results.filter(r => r.source === 'dictionary').length;
+            const aiCount = res.results.filter(r => r.source === 'ai').length;
+            document.getElementById('dictCount').textContent = dictCount;
+            document.getElementById('aiCount').textContent = aiCount;
+
+            const tbody = document.getElementById('previewBody');
+            tbody.innerHTML = '';
+            res.results.forEach((r, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td><strong>${r.word}</strong></td>
+                    <td>${r.pos || '-'}</td>
+                    <td>${r.phonetic || '-'}</td>
+                    <td>${r.definition || '-'}</td>
+                    <td><span class="tag ${r.source === 'dictionary' ? 'tag-new' : 'tag-learning'}">${r.source === 'dictionary' ? '📖' : '🤖'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('previewSection').style.display = 'block';
+            document.getElementById('importForm').style.display = 'none';
+        })
+        .catch(err => alert('预览失败: ' + err.message));
+}
+
+function confirmImport() {
+    fetch('{{ url_for("import_confirm") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            wordbook_id: importWordbookId,
+            results: importResults
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            alert(res.message);
+            window.location.href = '/wordbook/' + importWordbookId;
+        } else {
+            alert(res.message);
+        }
+    });
+}
+
+function cancelImport() {
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('importForm').style.display = 'block';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}设置 - WordFreezing{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <h1>⚙️ 设置</h1>
+
+    <!-- AI 引擎配置 -->
+    <div class="settings-section">
+        <h2>🤖 AI 引擎</h2>
+
+        <div class="form-group">
+            <label>AI 提供商</label>
+            <select id="aiProvider" onchange="toggleProvider()">
+                <option value="deepseek" {% if config.get('ai_provider') == 'deepseek' %}selected{% endif %}>DeepSeek API</option>
+                <option value="ollama" {% if config.get('ai_provider') == 'ollama' %}selected{% endif %}>本地 Ollama</option>
+            </select>
+        </div>
+
+        <!-- DeepSeek 配置 -->
+        <div id="deepseekConfig" class="provider-config">
+            <div class="form-group">
+                <label>API Base URL</label>
+                <input type="text" id="deepseekBaseUrl"
+                       value="{{ config.get('deepseek_base_url', 'https://api.deepseek.com') }}">
+            </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="deepseekApiKey"
+                       value="{{ config.get('deepseek_api_key', '') }}"
+                       placeholder="sk-...">
+            </div>
+            <div class="form-group">
+                <label>模型</label>
+                <input type="text" id="deepseekModel" list="deepseekModels"
+                       value="{{ config.get('deepseek_model', 'deepseek-chat') }}"
+                       placeholder="deepseek-chat / deepseek-reasoner">
+                <datalist id="deepseekModels">
+                    <option value="deepseek-chat">DeepSeek-V3（默认，推荐）</option>
+                    <option value="deepseek-reasoner">DeepSeek-R1（推理）</option>
+                </datalist>
+            </div>
+        </div>
+
+        <!-- Ollama 配置 -->
+        <div id="ollamaConfig" class="provider-config" style="display:none">
+            <div class="form-group">
+                <label>Ollama 服务地址</label>
+                <input type="text" id="ollamaBaseUrl"
+                       value="{{ config.get('ollama_base_url', 'http://localhost:11434') }}"
+                       placeholder="http://localhost:11434">
+            </div>
+            <div class="form-group">
+                <label>模型名称</label>
+                <input type="text" id="ollamaModel"
+                       value="{{ config.get('ollama_model', 'llama3') }}"
+                       placeholder="llama3">
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button class="btn btn-primary" onclick="saveSettings()">保存配置</button>
+            <button class="btn btn-outline" onclick="testConnection()">测试连接</button>
+            <span id="connectionResult" class="connection-result"></span>
+        </div>
+    </div>
+
+    <!-- 数据管理 -->
+    <div class="settings-section">
+        <h2>💾 数据管理</h2>
+        <p class="section-desc">导出完整数据备份，或从备份文件恢复数据。</p>
+        <div class="settings-actions">
+            <button class="btn btn-primary" onclick="backup()">📤 导出备份</button>
+            <form id="restoreForm" style="display:inline" enctype="multipart/form-data">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('restoreFile').click()">
+                    📥 导入备份
+                </button>
+                <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreBackup(event)">
+            </form>
+        </div>
+        <div id="restoreResult" class="connection-result"></div>
+    </div>
+</div>
+
+<script>
+function toggleProvider() {
+    const provider = document.getElementById('aiProvider').value;
+    document.getElementById('deepseekConfig').style.display = provider === 'deepseek' ? 'block' : 'none';
+    document.getElementById('ollamaConfig').style.display = provider === 'ollama' ? 'block' : 'none';
+}
+
+function getSettings() {
+    return {
+        ai_provider: document.getElementById('aiProvider').value,
+        deepseek_base_url: document.getElementById('deepseekBaseUrl').value,
+        deepseek_api_key: document.getElementById('deepseekApiKey').value,
+        deepseek_model: document.getElementById('deepseekModel').value,
+        ollama_base_url: document.getElementById('ollamaBaseUrl').value,
+        ollama_model: document.getElementById('ollamaModel').value,
+    };
+}
+
+function saveSettings() {
+    const data = new URLSearchParams(getSettings());
+    fetch('{{ url_for("settings_save") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: data
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            alert('配置已保存');
+        } else {
+            alert('保存失败: ' + res.message);
+        }
+    });
+}
+
+function testConnection() {
+    const el = document.getElementById('connectionResult');
+    el.textContent = '测试中...';
+    el.className = 'connection-result';
+
+    fetch('{{ url_for("settings_test_connection") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(getSettings())
+    })
+    .then(r => r.json())
+    .then(res => {
+        el.textContent = res.message;
+        el.className = 'connection-result ' + (res.success ? 'success' : 'error');
+    })
+    .catch(err => {
+        el.textContent = '请求失败: ' + err.message;
+        el.className = 'connection-result error';
+    });
+}
+
+function backup() {
+    fetch('{{ url_for("settings_backup") }}', { method: 'POST' })
+        .then(r => r.blob())
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'wordfreezing_backup_' + new Date().toISOString().slice(0,10) + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+}
+
+function restoreBackup(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!confirm('导入备份将覆盖现有所有数据，确定继续？')) return;
+
+    const data = new FormData();
+    data.append('backup_file', file);
+
+    const el = document.getElementById('restoreResult');
+    el.textContent = '恢复中...';
+    el.className = 'connection-result';
+
+    fetch('{{ url_for("settings_restore") }}', {
+        method: 'POST',
+        body: data
+    })
+    .then(r => r.json())
+    .then(res => {
+        el.textContent = res.message;
+        el.className = 'connection-result ' + (res.success ? 'success' : 'error');
+    });
+}
+</script>
+{% endblock %}
