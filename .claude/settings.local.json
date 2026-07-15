@@ -35,7 +35,17 @@
       "Bash(curl -s -X POST http://127.0.0.1:5000/wordbook/create -d \"name=TestWB&mode=writing\")",
       "Bash(curl -s -X POST http://127.0.0.1:5000/wordbook/7/words/batch -d \"action=mastered&word_ids[]=1\")",
       "Bash(curl -s http://127.0.0.1:5000/wordbook/3)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(netstat -ano)",
+      "Bash(kill 13072 3744 1460 31048 1176 27748 28384 29140 12484 4292)",
+      "Bash(taskkill /F /PID 28384)",
+      "Bash(taskkill /F /PID 27748)",
+      "Bash(taskkill /F /PID 1460)",
+      "Bash(taskkill /F /PID 13072)",
+      "Bash(taskkill /F /PID 3744)",
+      "Bash(awk '{print $5}')",
+      "Bash(read pid *)",
+      "Bash(tasklist //FI 'PID eq __TRACKED_VAR__' //FO CSV)"
     ]
   }
 }

@@ -498,18 +498,20 @@ def create_app():
 
             # 导入词本
             for wb in data.get('wordbooks', []):
-                db.execute('INSERT INTO wordbooks (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)',
-                         (wb['id'], wb['name'], wb.get('created_at', datetime.now().isoformat()),
+                db.execute('INSERT INTO wordbooks (id, name, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+                         (wb['id'], wb['name'], wb.get('mode', 'writing'),
+                          wb.get('created_at', datetime.now().isoformat()),
                           wb.get('updated_at', datetime.now().isoformat())))
 
             # 导入单词
             for w in data.get('words', []):
                 db.execute(
-                    '''INSERT INTO words (id, wordbook_id, word, pos, phonetic, definition, examples, status,
+                    '''INSERT INTO words (id, wordbook_id, word, pos, phonetic, definition, examples, input_example, status,
                        review_stage, correct_count, last_review_date, next_review_date, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                     (w['id'], w['wordbook_id'], w['word'], w.get('pos', ''), w.get('phonetic', ''),
-                     w.get('definition', ''), w.get('examples', '[]'), w.get('status', 'new'),
+                     w.get('definition', ''), w.get('examples', '[]'), w.get('input_example', ''),
+                     w.get('status', 'new'),
                      w.get('review_stage', 0), w.get('correct_count', 0),
                      w.get('last_review_date', ''), w.get('next_review_date', ''), w.get('created_at', ''))
                 )
