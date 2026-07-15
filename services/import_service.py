@@ -191,19 +191,37 @@ def parse_txt(content):
 def parse_manual(text):
     """解析手动输入的文本，返回单词列表
 
+    支持两种格式：
+    - 纯单词：succumb, feasible, albeit
+    - 单词+例句：succumb|He finally succumbed, feasible|It's feasible
+
     Returns:
-        list of dict: [{'word': 'succumb', 'input_example': ''}, ...]
+        list of dict: [{'word': 'succumb', 'input_example': 'He finally...'}, ...]
     """
-    # 支持逗号、空格、换行分隔
+    # 先按逗号分隔，再处理每项中的 | 格式
     import re
-    raw = re.split(r'[,，\s\n\r]+', text.strip())
+    raw = re.split(r'[,，]+', text.strip())
     seen = set()
     unique = []
-    for w in raw:
-        word = w.strip().lower()
-        if word and word.isascii() and word.replace('-', '').isalpha() and word not in seen:
-            seen.add(word)
-            unique.append({'word': word, 'input_example': ''})
+    for item in raw:
+        item = item.strip()
+        if not item:
+            continue
+        if '|' in item:
+            parts = item.split('|', 1)
+            word = parts[0].strip().lower()
+            example = parts[1].strip()
+            if word and word.isascii() and word.replace('-', '').isalpha() and word not in seen:
+                seen.add(word)
+                unique.append({'word': word, 'input_example': example})
+        else:
+            # 纯单词行，继续按空格/换行拆分
+            tokens = re.split(r'[\s\n\r]+', item)
+            for w in tokens:
+                word = w.strip().lower()
+                if word and word.isascii() and word.replace('-', '').isalpha() and word not in seen:
+                    seen.add(word)
+                    unique.append({'word': word, 'input_example': ''})
     return unique
 
 
