@@ -283,7 +283,14 @@ function showJudgeResult(data) {
                 (data.word.definition ? '<br><strong>释义:</strong> ' + data.word.definition : '') +
                 '</div><br>';
         }
-        var feedbackHtml = (data.judge.message || '');
+        var feedbackHtml = '<p>' + (data.judge.message || '') + '</p>';
+
+        // 翻译模式展示正确翻译
+        if (isTranslationMode && data.judge.correct_translation) {
+            feedbackHtml += '<div style="margin-top:10px;padding:10px 14px;background:#f0fdf4;border-radius:8px;border-left:3px solid #22c55e">' +
+                '<strong style="color:#15803d">✅ 参考翻译:</strong> ' +
+                data.judge.correct_translation + '</div>';
+        }
 
         // 翻译模式额外展示原句
         if (isTranslationMode && data.word && data.word.input_example) {
@@ -399,12 +406,24 @@ function doRetrySubmit() {
         if (data.passed) {
             document.getElementById('retryIcon').textContent = '✅';
             document.getElementById('retryMessage').textContent = '通过！正确加一 💪';
-            document.getElementById('retryDetail').textContent = data.judge.message ||
-                (isTranslationMode ? '翻译准确！' : '句子自然地道！');
+            var passDetail = data.judge.message || (isTranslationMode ? '翻译准确！' : '句子自然地道！');
+            // 翻译模式通过时也显示参考翻译
+            if (isTranslationMode && data.judge.correct_translation) {
+                passDetail += '<div style="margin-top:10px;padding:10px 14px;background:#f0fdf4;border-radius:8px;border-left:3px solid #22c55e">' +
+                    '<strong style="color:#15803d">✅ 参考翻译:</strong> ' +
+                    data.judge.correct_translation + '</div>';
+            }
+            document.getElementById('retryDetail').innerHTML = passDetail;
         } else {
             document.getElementById('retryIcon').textContent = '❌';
             document.getElementById('retryMessage').textContent = '不通过';
-            var retryHtml = (data.judge.message || '');
+            var retryHtml = '<p>' + (data.judge.message || '') + '</p>';
+            // 翻译模式展示正确翻译
+            if (isTranslationMode && data.judge.correct_translation) {
+                retryHtml += '<div style="margin-top:10px;padding:10px 14px;background:#f0fdf4;border-radius:8px;border-left:3px solid #22c55e">' +
+                    '<strong style="color:#15803d">✅ 参考翻译:</strong> ' +
+                    data.judge.correct_translation + '</div>';
+            }
             // 翻译模式额外展示原句
             if (isTranslationMode && data.word && data.word.input_example) {
                 retryHtml = '<div class="example-source" style="margin-bottom:12px">' +

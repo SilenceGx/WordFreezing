@@ -16,8 +16,25 @@ def get_db():
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA journal_mode=WAL")
         g.db.execute("PRAGMA foreign_keys=ON")
+        _ensure_tables(g.db)
         _run_migrations(g.db)
     return g.db
+
+
+def _ensure_tables(db):
+    """确保数据库表存在（不存在则初始化）"""
+    try:
+        row = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='wordbooks'"
+        ).fetchone()
+        if not row:
+            # 表不存在，执行建表
+            with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
+                db.executescript(f.read())
+            db.commit()
+    except Exception:
+        # SQLite 可能还没连接或文件访问出错
+        pass
 
 
 def close_db(e=None):
