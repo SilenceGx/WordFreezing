@@ -27,7 +27,7 @@
 
             <!-- 翻译模式的原文例句（仅 translation 模式显示） -->
             <div class="example-source" id="exampleSource" style="display:none">
-                <p class="example-source-label">📖 原文例句</p>
+                <p class="example-source-label" id="exampleSourceLabel">📖 原文例句</p>
                 <p class="example-source-text" id="exampleSourceText"></p>
             </div>
 
@@ -137,11 +137,7 @@ function loadNextWord() {
             document.getElementById('wordPos').textContent = word.pos || '';
 
             // 根据模式调整 UI
-            // 如果翻译模式但单词没有输入例句，自动降级为造句模式
             currentActualMode = currentWordbookMode;
-            if (currentActualMode === 'translation' && !word.input_example) {
-                currentActualMode = 'writing';
-            }
             const isTranslationMode = currentActualMode === 'translation';
             const exampleSource = document.getElementById('exampleSource');
 
@@ -153,7 +149,12 @@ function loadNextWord() {
                     document.getElementById('exampleSourceText').textContent = word.input_example;
                     exampleSource.style.display = 'block';
                 } else {
-                    exampleSource.style.display = 'none';
+                    // 保险：无例句时显示提示，禁止提交
+                    exampleSource.style.display = 'block';
+                    document.getElementById('exampleSourceLabel').textContent = '⚠️ 提示';
+                    document.getElementById('exampleSourceText').textContent = '此单词没有例句，无法使用翻译模式。请先在词本中编辑添加原文例句。';
+                    document.getElementById('sentenceInput').disabled = true;
+                    document.getElementById('submitBtn').disabled = true;
                 }
                 document.getElementById('submitBtn').textContent = '提交翻译';
             } else {

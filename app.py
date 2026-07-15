@@ -158,12 +158,20 @@ def create_app():
         due = WordModel.get_due_reviews(wordbook_id, limit=1)
         if due:
             w = due[0]
+            # 翻译模式且无 input_example 时，用 AI 例句补上
+            if wb_mode == 'translation' and not w.get('input_example') and w.get('examples'):
+                w['input_example'] = w['examples'][0]
+                WordModel.update(w['id'], input_example=w['examples'][0])
             return jsonify({'word': w, 'mode': 'review', 'wordbook_mode': wb_mode})
 
         # 2. 再取出新词
         new_words = WordModel.get_new_words(wordbook_id, limit=1)
         if new_words:
             w = new_words[0]
+            # 翻译模式且无 input_example 时，用 AI 例句补上
+            if wb_mode == 'translation' and not w.get('input_example') and w.get('examples'):
+                w['input_example'] = w['examples'][0]
+                WordModel.update(w['id'], input_example=w['examples'][0])
             return jsonify({'word': w, 'mode': 'new', 'wordbook_mode': wb_mode})
 
         # 3. 全部学完
