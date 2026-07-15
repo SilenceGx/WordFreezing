@@ -30,6 +30,28 @@ def create_app():
         print(f"[初始化] 首次运行，创建数据库: {db_path}")
         init_db()
         print("[初始化] 数据库初始化完成")
+    else:
+        # 验证数据库是否有效（有表结构），避免空/损坏文件导致表不存在
+        import sqlite3
+        try:
+            _check = sqlite3.connect(db_path)
+            _tables = _check.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='wordbooks'"
+            ).fetchall()
+            _check.close()
+            if not _tables:
+                print(f"[初始化] 数据库文件存在但缺少表，重新初始化...")
+                os.remove(db_path)
+                init_db()
+                print("[初始化] 数据库重新初始化完成")
+        except Exception as _e:
+            print(f"[初始化] 数据库检查失败，重新初始化: {_e}")
+            try:
+                os.remove(db_path)
+            except Exception:
+                pass
+            init_db()
+            print("[初始化] 数据库重新初始化完成")
 
     # 注册 teardown
     app.teardown_appcontext(close_db)
