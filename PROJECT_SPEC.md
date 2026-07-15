@@ -1,10 +1,15 @@
 # WordFreezing — 个人背单词应用
 
-> 通过 AI 造句评判 + 间隔重复，真正掌握单词的用法。
+> 通过 AI 评判 + 间隔重复，真正掌握单词的用法。支持造句模式和翻译模式双模式。
 
 ## 一、核心理念
 
-区别于传统"看单词→记释义"的背词方式，本应用要求用户**为每个单词写一个句子**，由 AI 评判是否足够地道、符合 native speaker 语境。通过科学的间隔重复机制，确保用户**真正掌握**单词的用法，而非死记硬背释义。
+区别于传统"看单词→记释义"的背词方式，本应用提供两种学习模式：
+
+- **✍️ 造句模式**：要求用户用目标单词写一个英文句子，AI 评判是否地道
+- **🌍 翻译模式**：展示原文例句，用户写中文翻译，AI 评判核心意思是否准确
+
+通过科学的间隔重复机制，确保用户**真正掌握**单词的用法，而非死记硬背释义。
 
 ## 二、产品定位
 
@@ -20,8 +25,9 @@
 ### 3.1 词本 (Wordbook)
 
 - 用户创建/导入的词本集合
-- 每个词本有：名称、创建时间
+- 每个词本有：名称、创建时间、**学习模式**（造句/翻译）
 - 词本内包含多个单词
+- 词本模式决定其内所有单词的学习方式
 
 ### 3.2 单词 (Word)
 
@@ -34,6 +40,7 @@
 | phonetic | 音标 | 本地词典查询 / AI 补全 |
 | definition | 释义 | 本地词典查询 / AI 补全 |
 | examples | 例句列表（至少 2 条） | AI 预生成（一次性批量），固定不变 |
+| input_example | 用户自输原文例句（翻译模式用） | TXT 导入 `单词\|例句` 或预览页手动输入 |
 | status | 学习状态：`new` / `learning` / `mastered` | 系统根据学习行为自动更新，支持手动调整 |
 | review_stage | 复习阶段：0=首次, 1=1天, 2=3天, 3=7天 | 系统自动跟踪 |
 | last_review_date | 上次复习日期 | 系统自动记录 |
@@ -42,20 +49,22 @@
 
 ### 3.3 学习状态变迁
 
+状态变迁适用于两种模式（写作模式的"造句通过"对应翻译模式的"翻译通过"）：
+
 ```
-new ──── 首次造句通过 ────→ mastered ✅（直接斩）
+new ──── 首次通过 ────→ mastered ✅（直接斩）
   │
-  ├── 首次造句不通过 ──→ learning (stage 0) ──→ 立即重试(不看答案)
-  │                                                ├─ 通过 → correct_count+1 → stage 1
-  │                                                └─ 不通过 → correct_count=0 → 留 stage 0
+  ├── 首次不通过 ──→ learning (stage 0) ──→ 立即重试(不看答案)
+  │                                              ├─ 通过 → correct_count+1 → stage 1
+  │                                              └─ 不通过 → correct_count=0 → 留 stage 0
   │
   └── 不认识 ──→ learning (stage 0) ──→ 先看释义例句 → 立即重试(不看答案)
                                            ├─ 通过 → correct_count+1 → stage 1
                                            └─ 不通过 → correct_count=0 → 留 stage 0
 
-learning (stage 0) ── 1 天后到期 → 造句通过 ──→ learning (stage 1)
-learning (stage 1) ── 3 天后到期 → 造句通过 ──→ learning (stage 2)
-learning (stage 2) ── 7 天后到期 → 造句通过 ──→ mastered ✅（斩！）
+learning (stage 0) ── 1 天后到期 → 通过 ──→ learning (stage 1)
+learning (stage 1) ── 3 天后到期 → 通过 ──→ learning (stage 2)
+learning (stage 2) ── 7 天后到期 → 通过 ──→ mastered ✅（斩！）
 
 任何 stage 失败 ──→ 退回到 learning (stage 0)
 同一天重复通过只计一次有效
@@ -75,45 +84,51 @@ learning (stage 2) ── 7 天后到期 → 造句通过 ──→ mastered ✅
 
 - 展示今日待复习单词数量，引导用户**先复习再学新词**
 - 词本卡片列表，每个词本显示：
-  - 词本名称、总词数
+  - 词本名称、总词数、学习模式
   - 进度分布：`new` / `learning` / `mastered` 各数量
-- "创建新词本"按钮
+- "创建新词本"按钮（可选择造句/翻译模式）
 - "导入词本"按钮
 - 全局统计概览：总词数、已斩词数
 
 ### 4.2 学习流程
 
-#### 核心流程（每个单词）
+#### 造句模式流程
 
 1. **展示单词**：英文、词性、音标（释义和例句隐藏，不给提示）
 2. **用户操作**：
-   - 在输入框写一个句子（无字数限制），点击"提交"按钮
+   - 在输入框写一个英文句子，点击"提交句子"
    - 或点击"✅ 已掌握"按钮（直接 mastery，跳过造句）
    - 或点击"❌ 不认识"按钮
-3. **AI 评判**（提交后）：
-   - 显示加载状态，防止重复提交
-   - 深度求索 DeepSeek API（默认）/ 本地 Ollama（可选）
+3. **AI 评判**（提交后）：判断句子是否语法正确、用词地道
 4. **评判结果**：
-   - **通过** → 显示通过提示，执行"斩"动画效果，进入下一个词
-   - **不通过** → 分两步：
-     a. **学习页**：先展示单词释义（单词/音标/词性/中文释义），再展示评判反馈（仅问题描述，**不提供改正例句**），最后展示两个地道例句（优先来自《哈利波特》原著原文，标注 `📖 哈利波特`；查不到时 AI 生成，标注 `🤖 AI生成`）→ 底部出现"✍️ 再试一次"按钮
-     b. **重试页**：点击"再试一次"后回到干净单词展示页（**与初始一样，仅单词/音标/词性，看不到释义和例句**），用户再写一个句子提交 → AI 评判
-       - 通过 → `correct_count +1`，学习阶段推进（stage 0→1）
-       - 不通过 → `correct_count = 0`，留在 stage 0
-       显示结果后点击"继续"进入下个词
-5. **"不认识"流程**：展示单词完整信息（释义/词性/音标）+ 两个例句（优先 HP 原文，标注来源）→ 底部出现"✍️ 再试一次"按钮 → 同上方重试页流程
-6. **"斩"动画效果**：通过时的视觉反馈（类似百词斩的消除动效）
+   - **通过** → 斩动画 → 下一个词
+   - **不通过** → 展示单词释义 + 评判反馈 + 例句学习 → "✍️ 再试一次"
+5. **重试**：回到空白单词展示页（看不到答案），再写句子提交
 
-#### 先复习再学新词
+#### 翻译模式流程
 
-- 用户进入词本时，优先展示**今日到期**的 learning 单词
-- 复习完毕后，进入 new 单词的学习
+1. **展示单词**：英文、词性、音标、**原文例句**（释义隐藏）
+2. **用户操作**：
+   - 在输入框写中文翻译，点击"提交翻译"
+   - 或点击"✅ 已掌握"（直接 mastery）
+   - 或点击"❌ 不认识"
+3. **AI 评判**：判断中文翻译是否准确传达原句核心意思，**始终给出参考翻译**
+4. **评判结果**：
+   - **通过** → 斩动画 → 下一个词
+   - **不通过** → 展示单词释义 + 评判反馈 + 参考翻译 + 例句学习 → "✍️ 再试一次"
+5. **重试**：回到空白展示页（看不到答案），重新写翻译提交
+
+#### 通用规则
+
+- 先复习今日到期单词，再学新词
 - 用户可随时中断，进度自动保存
+- 翻译模式单词若无 `input_example`，自动用 AI 生成的首条例句补上
+- 两种模式的"斩"动画和状态变迁逻辑完全一致
 
 ### 4.3 词本总览
 
 - 表格展示词本中所有单词
-- 列：单词、词性、释义、状态（new / learning / mastered）
+- 列：单词、词性、释义、原文例句、状态（new / learning / mastered）
 - 支持搜索/过滤单词
 - 每行可操作：
   - "斩"按钮（手动标记为 mastered）
@@ -124,39 +139,53 @@ learning (stage 2) ── 7 天后到期 → 造句通过 ──→ mastered ✅
 ### 4.4 词本管理
 
 - 编辑词本名称
-- 编辑单词：修改词性、音标、释义、例句
+- 删除词本（级联删除所有单词）
 - 删除单词（从词本中移除）
 - 批量删除
 
 ### 4.5 导入词本
 
 #### 方式一：TXT 文件导入
-- 用户上传 TXT 文件，每行一个单词
-- 示例：
+- 用户上传 TXT 文件，支持两种格式：
   ```
+  # 纯单词
   abandon
   ability
-  about
-  ...
+
+  # 单词|原文例句（翻译模式用）
+  succumb|He finally succumbed to the temptation.
+  feasible|Is it feasible to finish this by Friday?
   ```
 
 #### 方式二：手动逐词输入
-- 在界面上逐个输入单词
+- 在界面上逐个输入单词，支持两种格式：
+  ```
+  # 纯单词（逗号或换行分隔）
+  succumb, feasible, albeit
+
+  # 单词|例句（每行一个，例句中的逗号不会误拆）
+  ritual|It has become a grimly reliable annual ritual.
+  pensioner|Should a car-driving pensioner have to subsidise...
+  ```
 
 #### 处理流程
-1. 用户输入词本名称
+1. 用户输入词本名称或选择已有词本
 2. 提供单词列表（文件或手工输入）
 3. 系统处理：
    - 查询**本地词典数据库**（ECDICT 开源词库，MIT 许可）
      - 命中 → 自动提取词性、音标、释义（零 API 成本）
    - 未命中词汇 + 例句生成 → 调用 AI 一次性批量补全
-4. 处理结果显示给用户确认
-5. 确认后批量入库
+4. 预览页展示处理结果，**"原文例句"列可编辑**
+5. 确认后批量入库（含 `input_example` 字段）
 6. 自动跳转到词本总览页面
+
+#### 模式说明
+- 导入到已有词本 → 使用该词本的模式
+- 导入时创建新词本 → 默认造句模式（如需翻译模式，先在首页创建翻译模式词本）
 
 ### 4.6 导出词本
 
-- 支持 **JSON 格式** 导出：保留完整单词信息
+- 支持 **JSON 格式** 导出：保留完整单词信息（含 `input_example`）
 - 支持 **CSV 格式** 导出：可在 Excel 等工具中查看
 
 ### 4.7 统计与进度追踪
@@ -175,7 +204,7 @@ learning (stage 2) ── 7 天后到期 → 造句通过 ──→ mastered ✅
   - 本地 Ollama（可选）：服务地址、模型选择
   - 配置信息存储在 SQLite 配置表中
 - **数据管理**：
-  - 导出完整数据备份
+  - 导出完整数据备份（含 `mode` 和 `input_example`）
   - 导入数据备份
 
 ## 五、技术方案
@@ -191,7 +220,7 @@ learning (stage 2) ── 7 天后到期 → 造句通过 ──→ mastered ✅
 | AI 接口 | DeepSeek API（OpenAI 兼容格式） |
 | 本地 AI 备选 | Ollama API（与 DeepSeek 相同接口规范） |
 
-### 5.2 项目结构（初始设计）
+### 5.2 项目结构
 
 ```
 WordFreezing/
@@ -201,102 +230,90 @@ WordFreezing/
 │   ├── schema.sql         # 数据库建表语句
 │   └── wordfreezing.db    # SQLite 数据文件（运行时生成）
 ├── dictionary/
-│   ├── ecdict.db          # 开源词典数据（预置）
-│   └── harry_index.db     # 哈利波特倒排索引（运行时生成）
-├── scripts/
-│   └── build_harry_index.py  # HP 索引预处理脚本
+│   └── ecdict.db          # 开源词典数据（可选预置）
 ├── models/
 │   ├── wordbook.py        # 词本数据操作
 │   ├── word.py            # 单词数据操作
 │   └── config.py          # 配置数据操作
 ├── services/
-│   ├── ai_service.py      # AI 评判 + 补全（抽象 DeepSeek/Ollama）
-│   ├── harry_sentence_service.py  # 哈利波特例句查询 + AI 精选
+│   ├── ai_service.py      # AI 评判 + 补全（造句评判 + 翻译评判）
 │   ├── import_service.py  # 导入处理逻辑
 │   └── review_service.py  # 间隔重复算法
 ├── static/
 │   ├── css/
-│   ├── js/
-│   └── img/
+│   └── js/
 └── templates/
     ├── base.html
     ├── index.html         # 首页
     ├── wordbook.html      # 词本总览
-    ├── learn.html         # 学习界面
+    ├── learn.html         # 学习界面（双模式自适应）
     ├── import.html        # 导入词本
     ├── stats.html         # 统计页面
     └── settings.html      # 设置页面
 ```
 
-### 5.3 AI 评判要点
+### 5.3 AI 评判
 
-1. **评判提示词**：AI 只判断 pass/fail + 问题描述（message），**不再提供改正例句**（suggestion 已废弃）。不通过时系统会额外展示《哈利波特》原文例句供用户自然体会语感
-2. **例句生成提示词**：要求生成简单自然、8-15 词、日常表达的例句，句子结构不复杂。**优先从 HP 索引获取**，查不到时降级到 AI 生成
+#### 造句评判
+- `judge_sentence(word, sentence)` — 判断用户写的英文句子是否语法正确、用词地道
+- 返回 `pass` / `fail` + 问题描述
 
-### 5.6 哈利波特原文例句集成
+#### 翻译评判
+- `judge_translation(word, example_sentence, user_translation)` — 判断中文翻译是否准确传达原句核心意思
+- 宽松标准：意译可接受，不需要字字对应
+- 严格拒绝：中英混杂、意思完全相反
+- 始终返回 `correct_translation` 参考翻译
 
-#### 5.6.1 倒排索引
-- 离线预处理流程（`scripts/build_harry_index.py`）：
-  1. 读取 `HarryEnglish/` 下 7 本英文原著 .txt
-  2. 正则分句 + 缩写保护（Mr./Mrs./Dr./St. 等）
-  3. simplemma 词形还原
-  4. 写入 `dictionary/harry_index.db`（sentences + word_index 两表）
-- 应用启动时自动检测，不存在则构建（约 20 秒）
-
-#### 5.6.2 例句获取流程
-```
-需要例句 → 查 word_index（lemma 匹配）→ 候选句预过滤 → AI 精选 1-2 句
-                                                     ↓ 查不到
-                                             降级到 AI 生成
-```
-
-#### 5.6.3 来源标注
-- HP 原文例句 → 标记 `📖 哈利波特`（代码前缀 `[HP]`）
-- AI 生成例句 → 标记 `🤖 AI生成`（代码前缀 `[AI]`）
-- 判官不通过时额外展示 `📖 哈利波特原文` 专用标签
+#### 通用
+- JSON 解析失败时容错返回 pass
+- 评判提示词避免给出完整例句（集中注意力在学习）
+- 例句生成要求简单自然、8-15 词、日常表达
 
 ### 5.4 重试机制
 
 - 首次不通过或点"不认识"后，单词立即进入 `learning`（stage 0）
-- 前端立即提供一次重试机会：回到空白单词展示页（**看不到释义/例句/反馈**），用户再写句子提交
+- 前端立即提供一次重试机会：回到空白单词展示页（**看不到释义/例句/反馈**），用户重新作答
 - 重试走 `process_review` learning 路径：
   - 通过 → `correct_count +1`，stage 0→1，next_review = 3 天后
   - 不通过 → `correct_count = 0`，留在 stage 0，next_review = 1 天后
 - 重试结果展示后用户点击"继续"进入下一个词
 
 ### 5.5 间隔重复算法逻辑（伪代码）
-        if ai_judge_pass(word):
-            word.status = 'mastered'
-            word.correct_count = 1
-            return '斩！'
-        else:
-            word.status = 'learning'
-            word.review_stage = 0
-            word.next_review_date = today + 1 day
-            word.correct_count = 0
-            return '进入复习队列'
 
-    if word.status == 'learning':
-        if not ai_judge_pass(word):
-            word.review_stage = 0
-            word.next_review_date = today + 1 day
-            word.correct_count = 0
-            return '继续复习'
-        else:
-            if word.review_stage == 0:
-                word.review_stage = 1
-                word.next_review_date = today + 3 days
-                word.correct_count = 1
-                return '通过！还需巩固'
-            elif word.review_stage == 1:
-                word.review_stage = 2
-                word.next_review_date = today + 7 days
-                word.correct_count = 2
-                return '通过！还需巩固'
-            elif word.review_stage == 2:
-                word.status = 'mastered'
-                word.correct_count = 3
-                return '斩！'
+```
+if word.status == 'new':
+    if ai_judge_pass(word):
+        word.status = 'mastered'
+        word.correct_count = 1
+        return '斩！'
+    else:
+        word.status = 'learning'
+        word.review_stage = 0
+        word.next_review_date = today + 1 day
+        word.correct_count = 0
+        return '进入复习队列'
+
+if word.status == 'learning':
+    if not ai_judge_pass(word):
+        word.review_stage = 0
+        word.next_review_date = today + 1 day
+        word.correct_count = 0
+        return '继续复习'
+    else:
+        if word.review_stage == 0:
+            word.review_stage = 1
+            word.next_review_date = today + 3 days
+            word.correct_count = 1
+            return '通过！还需巩固'
+        elif word.review_stage == 1:
+            word.review_stage = 2
+            word.next_review_date = today + 7 days
+            word.correct_count = 2
+            return '通过！还需巩固'
+        elif word.review_stage == 2:
+            word.status = 'mastered'
+            word.correct_count = 3
+            return '斩！'
 ```
 
 ## 六、用户界面示意
@@ -310,10 +327,10 @@ WordFreezing/
 |  [今日待复习: 5 个单词]                 |
 |  先复习 → 再学新词                      |
 |                                        |
-|  📖 CET-6 高频词   142词               |
+|  📖 CET-6 高频词 🌍    142词           |
 |      new: 120  learning: 18  ✅: 4     |
 |                                        |
-|  📖 阅读生词       36词                |
+|  📖 阅读生词           36词            |
 |      new: 20  learning: 10  ✅: 6      |
 |                                        |
 |  [+ 创建新词本] [📥 导入词本]          |
@@ -322,7 +339,7 @@ WordFreezing/
 +----------------------------------------+
 ```
 
-### 学习界面
+### 造句模式学习
 ```
 +----------------------------------------+
 |  ← CET-6高频词   进度 new: 84/120       |
@@ -330,12 +347,11 @@ WordFreezing/
 |        +--------------+                |
 |        | recommend    |                |
 |        | /ˈrekəmend/  |                |
-|        | v. 推荐      |                |
+|        | v.           |                |
 |        +--------------+                |
 |                                        |
 |  +----------------------------------+  |
 |  | 用 "recommend" 造一个句子...      |  |
-|  |                                  |  |
 |  |                                  |  |
 |  +----------------------------------+  |
 |                                        |
@@ -343,48 +359,70 @@ WordFreezing/
 +----------------------------------------+
 ```
 
-### 评判不通过（先展示含义，再展示评价和例句，最后可重试）
+### 翻译模式学习
 ```
 +----------------------------------------+
-|  ❌ 不够地道                            |
+|  ← 阅读生词     🌍 翻译模式             |
 |  ------------------------------------- |
-|  ┌─ recommend  /ˈrekəmend/  v. ──────┐ |
-|  │  释义: 推荐、建议                  │ |
+|        +--------------+                |
+|        | succumb      |                |
+|        | /səˈkʌm/     |                |
+|        | v.           |                |
+|        +--------------+                |
+|                                        |
+|  📖 原文例句                           |
+|  "He finally succumbed to the          |
+|   temptation and ate the whole cake."  |
+|                                        |
+|  +----------------------------------+  |
+|  | 请输入中文翻译...                  |  |
+|  +----------------------------------+  |
+|                                        |
+|      [ 提交翻译 ]   [ ✅ 已掌握 ]       |
++----------------------------------------+
+```
+
+### 评判不通过（翻译模式）
+```
++----------------------------------------+
+|  ❌ 翻译不够准确                        |
+|  ------------------------------------- |
+|  ┌─ succumb  /səˈkʌm/  v. ───────────┐ |
+|  │  释义: 屈服、屈从                   │ |
 |  └────────────────────────────────────┘ |
 |                                        |
-|  "I recommend you to go" 中的          |
-|  "recommend sb to do" 是中式用法，     |
-|  更地道的说法是：                       |
-|  "I recommend that you go..."         |
+|  📖 原文例句                           |
+|  "He finally succumbed to..."          |
 |                                        |
-|  📖 例句学习                           |
-|  1. I recommend that you see a doctor. |
-|  2. She recommended this book to all   |
-|     her students.                      |
+|  你的翻译"他抵抗住了诱惑"意思相反，    |
+|  "succumb" 是屈服、让步的意思。        |
+|                                        |
+|  ✅ 参考翻译:                          |
+|  他最终屈服于诱惑，吃掉了整个蛋糕。     |
 |                                        |
 |  ─────────────────────────────────     |
 |         [ ✍️ 再试一次 ]                |
-|    (点击后回到空白单词展示页再答一次)    |
+|    (点击后回到空白页再答一次)           |
 +----------------------------------------+
 ```
 
 ### 词本总览
 ```
 +----------------------------------------+
-|  ← 首页   📖 CET-6 高频词              |
+|  ← 首页   📖 CET-6 高频词  ✍️ 造句模式 |
 |  总计 142 词 | new 120 | lrn 18 | ✅ 4 |
 |                                        |
-|  [✏️ 编辑] [▶ 开始学习] [📥 导入追加]   |
+|  [✏️ 编辑] [▶ 开始学习] [📥 导入追加]  |
+|                         [🗑️ 删除词本]  |
 |  ------------------------------------- |
 |  搜索: [________________]              |
 |                                        |
-|  □ 单词     词性  状态     操作         |
-|  □ abandon  v.    new      [✅斩]      |
-|  □ ability  n.    ✅ mastered [↩恢复]  |
-|  □ able     adj.  learning [✅斩]      |
-|  □ about    prep. ✅ mastered [↩恢复]  |
+|  □ 单词     词性  释义        原文例句   状态  操作 |
+|  □ abandon  v.    放弃        -        🆕   [✅斩] |
+|  □ succumb  v.    屈服        He fina… 📝   [✅斩] |
+|  □ ability  n.    能力        -        ✅   [↩恢复]|
 |                                        |
-|  已选 2 项   [批量斩] [批量恢复]        |
+|  已选 2 项   [批量斩] [批量恢复] [批量删除]|
 +----------------------------------------+
 ```
 
@@ -408,3 +446,4 @@ WordFreezing/
 4. **性能**
    - 本地词典查询 L0 缓存
    - 学习页面预加载下一个单词
+   - 数据库自动迁移兼容旧表结构
