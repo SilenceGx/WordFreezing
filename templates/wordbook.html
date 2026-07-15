@@ -32,6 +32,7 @@
                     <a href="{{ url_for('wordbook_export', wordbook_id=wordbook.id, fmt='csv') }}" class="dropdown-item">CSV 格式 (Excel)</a>
                 </div>
             </div>
+            <button class="btn btn-danger" onclick="deleteWordbook()">🗑️ 删除词本</button>
         </div>
     </div>
 
@@ -196,6 +197,16 @@ function resetWord(wordId) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({word_id: wordId})
     }).then(r => r.json()).then(res => { if (res.success) location.reload(); });
+}
+
+function deleteWordbook() {
+    if (!confirm('确定删除整个词本？（所有单词也会被删除）')) return;
+    fetch('{{ url_for("wordbook_delete", wordbook_id=wordbook.id) }}', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) window.location.href = '{{ url_for("index") }}';
+            else alert(res.message);
+        });
 }
 
 function deleteWord(wordId) {
