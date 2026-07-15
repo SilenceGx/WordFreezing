@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS wordbooks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    mode TEXT DEFAULT 'writing',       -- 学习模式: 'writing'（造句） / 'translation'（翻译）
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS words (
     phonetic TEXT DEFAULT '',      -- 音标
     definition TEXT DEFAULT '',    -- 释义
     examples TEXT DEFAULT '[]',    -- 例句列表，JSON 数组格式
+    input_example TEXT DEFAULT '', -- 用户自输例句（翻译模式用，来自阅读原文）
     status TEXT DEFAULT 'new' CHECK(status IN ('new', 'learning', 'mastered')),
     review_stage INTEGER DEFAULT 0,  -- 复习阶段: 0=首次, 1=1天, 2=3天, 3=7天
     correct_count INTEGER DEFAULT 0, -- 累计通过次数

@@ -30,6 +30,11 @@
         <div class="form-group" id="newWordbookGroup">
             <label>新词本名称:</label>
             <input type="text" name="new_wordbook_name" placeholder="输入新词本名称..." autofocus>
+            <label style="margin-top:8px;display:block">学习模式:</label>
+            <select name="mode" class="form-select" style="margin-top:4px">
+                <option value="writing">✍️ 造句模式 — 看单词写英文句子</option>
+                <option value="translation">🌍 翻译模式 — 看原文例句写中文翻译</option>
+            </select>
         </div>
 
         <!-- TXT 文件 -->
@@ -39,7 +44,7 @@
                 <input type="file" name="file" accept=".txt" class="file-input">
                 <div class="dropzone" onclick="document.querySelector('[name=file]').click()">
                     <p>拖拽或点击上传 TXT 文件</p>
-                    <p class="hint">每行一个英文单词</p>
+                    <p class="hint">每行一个英文单词，或使用 单词|原文例句 格式</p>
                 </div>
             </div>
         </div>
@@ -74,6 +79,7 @@
                         <th>词性</th>
                         <th>音标</th>
                         <th>释义</th>
+                        <th>原文例句（翻译模式用，可编辑）</th>
                         <th>来源</th>
                     </tr>
                 </thead>
@@ -142,12 +148,14 @@ function previewImport(e) {
             tbody.innerHTML = '';
             res.results.forEach((r, i) => {
                 const tr = document.createElement('tr');
+                const exampleValue = r.input_example ? r.input_example.replace(/"/g, '&quot;') : '';
                 tr.innerHTML = `
                     <td>${i + 1}</td>
                     <td><strong>${r.word}</strong></td>
                     <td>${r.pos || '-'}</td>
                     <td>${r.phonetic || '-'}</td>
                     <td>${r.definition || '-'}</td>
+                    <td><input type="text" class="example-input" data-index="${i}" value="${exampleValue}" placeholder="输入原文例句（可选）"></td>
                     <td><span class="tag ${r.source === 'dictionary' ? 'tag-new' : 'tag-learning'}">${r.source === 'dictionary' ? '📖' : '🤖'}</span></td>
                 `;
                 tbody.appendChild(tr);
@@ -160,6 +168,13 @@ function previewImport(e) {
 }
 
 function confirmImport() {
+    // 收集示例输入框的值
+    document.querySelectorAll('.example-input').forEach(function(input) {
+        const idx = parseInt(input.dataset.index);
+        if (importResults[idx]) {
+            importResults[idx].input_example = input.value.trim();
+        }
+    });
     fetch('{{ url_for("import_confirm") }}', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},

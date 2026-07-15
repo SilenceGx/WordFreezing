@@ -16,6 +16,7 @@ def get_db():
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA journal_mode=WAL")
         g.db.execute("PRAGMA foreign_keys=ON")
+        _run_migrations(g.db)
     return g.db
 
 
@@ -27,14 +28,30 @@ def close_db(e=None):
 
 
 def init_db():
-    """初始化数据库（建表）"""
+    """初始化数据库（建表 + 迁移）"""
     db = sqlite3.connect(DATABASE_PATH)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys=ON")
     with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
         db.executescript(f.read())
+    _run_migrations(db)
     db.commit()
     db.close()
+
+
+def _run_migrations(db):
+    """执行数据库迁移（兼容旧库新增字段）"""
+    # 迁移 1: wordbooks 表添加 mode 列
+    try:
+        db.execute("ALTER TABLE wordbooks ADD COLUMN mode TEXT DEFAULT 'writing'")
+    except sqlite3.OperationalError:
+        pass  # 列已存在
+
+    # 迁移 2: words 表添加 input_example 列
+    try:
+        db.execute("ALTER TABLE words ADD COLUMN input_example TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass  # 列已存在
 
 
 def dict_from_row(row):

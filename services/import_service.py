@@ -1,7 +1,7 @@
 """导入处理服务
 
 支持两种导入方式：
-1. TXT 文件导入（每行一个单词）
+1. TXT 文件导入（每行一个单词，支持 单词|例句 格式）
 2. 手动输入（逐词输入）
 
 处理流程：
@@ -154,53 +154,78 @@ def _lookup_dict(word):
 
 
 def parse_txt(content):
-    """解析 TXT 文件内容，返回单词列表（去重、保留字母）"""
-    words = []
+    """解析 TXT 文件内容，返回单词列表（去重、保留字母）
+
+    支持两种格式：
+    - 纯单词行：succumb
+    - 单词+例句：succumb|He finally succumbed to the temptation.
+
+    Returns:
+        list of dict: [{'word': 'succumb', 'input_example': 'He finally...'}, ...]
+    """
+    items = []
     for line in content.splitlines():
         line = line.strip()
-        if line and line.isascii() and line.replace('-', '').isalpha():
-            words.append(line.lower())
-    # 去重但保持顺序
+        if not line:
+            continue
+        # 检测 word|example 格式
+        if '|' in line:
+            parts = line.split('|', 1)
+            word = parts[0].strip().lower()
+            example = parts[1].strip()
+            if word and word.isascii() and word.replace('-', '').isalpha():
+                items.append({'word': word, 'input_example': example})
+        else:
+            if line.isascii() and line.replace('-', '').isalpha():
+                items.append({'word': line.lower(), 'input_example': ''})
+    # 去重但保持顺序（同单词保留第一个例句）
     seen = set()
     unique = []
-    for w in words:
-        if w not in seen:
-            seen.add(w)
-            unique.append(w)
+    for item in items:
+        if item['word'] not in seen:
+            seen.add(item['word'])
+            unique.append(item)
     return unique
 
 
 def parse_manual(text):
-    """解析手动输入的文本，返回单词列表"""
+    """解析手动输入的文本，返回单词列表
+
+    Returns:
+        list of dict: [{'word': 'succumb', 'input_example': ''}, ...]
+    """
     # 支持逗号、空格、换行分隔
     import re
-    words = re.split(r'[,，\s\n\r]+', text.strip())
-    words = [w.strip().lower() for w in words if w.strip().isascii() and w.strip().replace('-', '').isalpha()]
+    raw = re.split(r'[,，\s\n\r]+', text.strip())
     seen = set()
     unique = []
-    for w in words:
-        if w not in seen:
-            seen.add(w)
-            unique.append(w)
+    for w in raw:
+        word = w.strip().lower()
+        if word and word.isascii() and word.replace('-', '').isalpha() and word not in seen:
+            seen.add(word)
+            unique.append({'word': word, 'input_example': ''})
     return unique
 
 
-def process_import(wordbook_id, words):
+def process_import(wordbook_id, word_items):
     """处理导入的单词列表
 
     Args:
         wordbook_id: 词本 ID
-        words: list of str，单词列表
+        word_items: list of dict，每个包含 'word' 和可选的 'input_example'
+                    例如 [{'word': 'succumb', 'input_example': 'He finally...'}, ...]
 
     Returns:
-        dict: {imported_count, failed_count, details: [...]}
+        list of dict: 每个包含 word/pos/phonetic/definition/examples/input_example/source
     """
     from services.ai_service import batch_complete
+
+    # 提取纯单词列表
+    words = [item['word'] for item in word_items]
 
     # 1. 拆分已命中词典和未命中词汇
     lookup_results = {}  # word -> {pos, phonetic, definition}
     missing_words = []   # 未命中词典的单词列表
-    dict_available = DICT_PATH is not None
 
     for w in words:
         entry = _lookup_dict(w)
@@ -236,13 +261,19 @@ def process_import(wordbook_id, words):
 
     # 3. 组装结果
     results = []
-    for w in words:
+    for item in word_items:
+        w = item['word']
+        input_example = item.get('input_example', '')
+
         if w in lookup_results:
             info = lookup_results[w]
+            source = 'dictionary'
         elif w in ai_results:
             info = ai_results[w]
+            source = 'ai'
         else:
             info = {'pos': '', 'phonetic': '', 'definition': w, 'examples': []}
+            source = 'ai'
 
         results.append({
             'word': w,
@@ -250,7 +281,8 @@ def process_import(wordbook_id, words):
             'phonetic': info.get('phonetic', ''),
             'definition': info.get('definition', ''),
             'examples': info.get('examples', []),
-            'source': 'dictionary' if w in lookup_results else 'ai',
+            'input_example': input_example,
+            'source': source,
         })
 
     return results

@@ -7,7 +7,13 @@
     <div class="wordbook-header">
         <a href="{{ url_for('index') }}" class="back-link">← 首页</a>
         <div class="wordbook-header-info">
-            <h1>📖 {{ wordbook.name }}</h1>
+            <h1>📖 {{ wordbook.name }}
+                {% if wordbook.mode == 'translation' %}
+                <span class="mode-badge mode-translation">🌍 翻译模式</span>
+                {% else %}
+                <span class="mode-badge mode-writing">✍️ 造句模式</span>
+                {% endif %}
+            </h1>
             <p class="wordbook-summary">
                 总计 {{ wordbook.total }} 词 |
                 🆕 {{ wordbook.new_count }} 待学 |

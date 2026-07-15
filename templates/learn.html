@@ -25,6 +25,12 @@
                 <p class="word-pos" id="wordPos">v.</p>
             </div>
 
+            <!-- 翻译模式的原文例句（仅 translation 模式显示） -->
+            <div class="example-source" id="exampleSource" style="display:none">
+                <p class="example-source-label">📖 原文例句</p>
+                <p class="example-source-text" id="exampleSourceText"></p>
+            </div>
+
             <!-- 输入区域 -->
             <div class="sentence-area">
                 <textarea id="sentenceInput" rows="3"
@@ -35,7 +41,7 @@
             <!-- 按钮 -->
             <div class="learn-actions">
                 <button class="btn btn-primary btn-lg" id="submitBtn" onclick="submitSentence()">
-                    提交句子
+                    提交
                 </button>
                 <button class="btn btn-outline btn-lg" id="skipBtn" onclick="skipWord()">
                     ✅ 已掌握
@@ -91,6 +97,8 @@
 <script>
 let currentWordId = null;
 let currentMode = null;
+let currentWordbookMode = '{{ wordbook_mode }}';
+let currentActualMode = '{{ wordbook_mode }}';  // 实际模式（翻译模式无例句时降级）
 let isLoading = false;
 let isRetryMode = false;
 
@@ -120,12 +128,41 @@ function loadNextWord() {
             const word = data.word;
             currentWordId = word.id;
             currentMode = data.mode;
+            if (data.wordbook_mode) {
+                currentWordbookMode = data.wordbook_mode;
+            }
 
             document.getElementById('wordText').textContent = word.word;
             document.getElementById('wordPhonetic').textContent = word.phonetic || '';
             document.getElementById('wordPos').textContent = word.pos || '';
-            document.getElementById('sentenceInput').placeholder =
-                '用 "' + word.word + '" 造一个句子...';
+
+            // 根据模式调整 UI
+            // 如果翻译模式但单词没有输入例句，自动降级为造句模式
+            currentActualMode = currentWordbookMode;
+            if (currentActualMode === 'translation' && !word.input_example) {
+                currentActualMode = 'writing';
+            }
+            const isTranslationMode = currentActualMode === 'translation';
+            const exampleSource = document.getElementById('exampleSource');
+
+            if (isTranslationMode) {
+                // 翻译模式：显示原文例句，输入框提示中文翻译
+                document.getElementById('sentenceInput').placeholder =
+                    '请输入中文翻译...';
+                if (word.input_example) {
+                    document.getElementById('exampleSourceText').textContent = word.input_example;
+                    exampleSource.style.display = 'block';
+                } else {
+                    exampleSource.style.display = 'none';
+                }
+                document.getElementById('submitBtn').textContent = '提交翻译';
+            } else {
+                // 造句模式：隐藏原文例句
+                exampleSource.style.display = 'none';
+                document.getElementById('sentenceInput').placeholder =
+                    '用 "' + word.word + '" 造一个句子...';
+                document.getElementById('submitBtn').textContent = '提交句子';
+            }
 
             document.getElementById('progressInfo').textContent =
                 (data.mode === 'review' ? '📝 复习' : '🆕 新词') + ': ' + word.word;
@@ -139,7 +176,6 @@ function loadNextWord() {
             document.getElementById('sentenceInput').value = '';
             document.getElementById('sentenceInput').disabled = false;
             document.getElementById('submitBtn').disabled = false;
-            document.getElementById('submitBtn').textContent = '提交句子';
             document.getElementById('skipBtn').disabled = false;
             document.getElementById('dontKnowBtn').disabled = false;
             document.getElementById('sentenceInput').focus();
@@ -160,21 +196,28 @@ function submitSentence() {
         return;
     }
 
-    const sentence = document.getElementById('sentenceInput').value.trim();
-    if (!sentence) {
-        alert('请先写一个句子！');
+    const input = document.getElementById('sentenceInput').value.trim();
+    if (!input) {
+        alert(currentActualMode === 'translation' ? '请输入中文翻译！' : '请先写一个句子！');
         return;
     }
+
+    const isTranslationMode = currentActualMode === 'translation';
 
     isLoading = true;
     document.getElementById('sentenceInput').disabled = true;
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('submitBtn').textContent = '评判中...';
 
-    fetch('/api/learn/submit', {
+    const endpoint = isTranslationMode ? '/api/learn/submit-translation' : '/api/learn/submit';
+    const bodyData = isTranslationMode
+        ? {word_id: currentWordId, translation: input}
+        : {word_id: currentWordId, sentence: input};
+
+    fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({word_id: currentWordId, sentence: sentence})
+        body: JSON.stringify(bodyData)
     })
     .then(r => r.json())
     .then(data => {
@@ -212,10 +255,13 @@ function showJudgeResult(data) {
     document.getElementById('retryResult').style.display = 'none';
     document.getElementById('continueBtn').style.display = 'none';
 
+    const isTranslationMode = currentActualMode === 'translation';
+
     if (data.passed) {
         document.getElementById('judgeIcon').textContent = '✅';
         document.getElementById('judgeMessage').textContent = '🎉 通过！';
-        document.getElementById('judgeDetail').textContent = data.judge.message || '句子自然地道！';
+        document.getElementById('judgeDetail').textContent = data.judge.message ||
+            (isTranslationMode ? '翻译准确！' : '句子自然地道！');
         document.getElementById('examplesSection').style.display = 'none';
         document.getElementById('continueBtn').style.display = 'inline-flex';
 
@@ -225,7 +271,7 @@ function showJudgeResult(data) {
         }
     } else {
         document.getElementById('judgeIcon').textContent = '❌';
-        document.getElementById('judgeMessage').textContent = '不够地道';
+        document.getElementById('judgeMessage').textContent = isTranslationMode ? '翻译不够准确' : '不够地道';
         // 先展示单词含义，再展示评判意见和例句
         var wordInfoHtml = '';
         if (data.word) {
@@ -237,6 +283,15 @@ function showJudgeResult(data) {
                 '</div><br>';
         }
         var feedbackHtml = (data.judge.message || '');
+
+        // 翻译模式额外展示原句
+        if (isTranslationMode && data.word && data.word.input_example) {
+            feedbackHtml = '<div class="example-source" style="margin-bottom:12px">' +
+                '<p class="example-source-label">📖 原文例句</p>' +
+                '<p class="example-source-text">' + data.word.input_example + '</p>' +
+                '</div>' + feedbackHtml;
+        }
+
         document.getElementById('judgeDetail').innerHTML = wordInfoHtml + feedbackHtml;
 
         // 展示例句学习
@@ -245,7 +300,7 @@ function showJudgeResult(data) {
         document.getElementById('retryEntry').style.display = 'block';
     }
 
-    document.getElementById('submitBtn').textContent = '提交句子';
+    document.getElementById('submitBtn').textContent = isTranslationMode ? '提交翻译' : '提交句子';
 }
 
 /**
@@ -280,9 +335,11 @@ function startRetry() {
     document.getElementById('sentenceInput').value = '';
     document.getElementById('sentenceInput').disabled = false;
     document.getElementById('submitBtn').disabled = false;
-    document.getElementById('submitBtn').textContent = '提交句子';
 
-    // 重试模式下隐藏"已掌握"和"不认识"按钮 — 只让造句
+    const isTranslationMode = currentActualMode === 'translation';
+    document.getElementById('submitBtn').textContent = isTranslationMode ? '提交翻译' : '提交句子';
+
+    // 重试模式下隐藏"已掌握"和"不认识"按钮 — 只让答题
     document.getElementById('skipBtn').style.display = 'none';
     document.getElementById('dontKnowBtn').style.display = 'none';
 
@@ -297,21 +354,28 @@ function startRetry() {
  */
 function doRetrySubmit() {
     if (isLoading) return;
-    const sentence = document.getElementById('sentenceInput').value.trim();
-    if (!sentence) {
-        alert('请先写一个句子！');
+    const input = document.getElementById('sentenceInput').value.trim();
+    if (!input) {
+        alert(currentActualMode === 'translation' ? '请输入中文翻译！' : '请先写一个句子！');
         return;
     }
+
+    const isTranslationMode = currentActualMode === 'translation';
 
     isLoading = true;
     document.getElementById('sentenceInput').disabled = true;
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('submitBtn').textContent = '评判中...';
 
-    fetch('/api/learn/submit', {
+    const endpoint = isTranslationMode ? '/api/learn/submit-translation' : '/api/learn/submit';
+    const bodyData = isTranslationMode
+        ? {word_id: currentWordId, translation: input}
+        : {word_id: currentWordId, sentence: input};
+
+    fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({word_id: currentWordId, sentence: sentence})
+        body: JSON.stringify(bodyData)
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -319,7 +383,7 @@ function doRetrySubmit() {
             alert('AI 评判失败: ' + data.error);
             document.getElementById('sentenceInput').disabled = false;
             document.getElementById('submitBtn').disabled = false;
-            document.getElementById('submitBtn').textContent = '提交句子';
+            document.getElementById('submitBtn').textContent = isTranslationMode ? '提交翻译' : '提交句子';
             isLoading = false;
             return;
         }
@@ -334,28 +398,37 @@ function doRetrySubmit() {
         if (data.passed) {
             document.getElementById('retryIcon').textContent = '✅';
             document.getElementById('retryMessage').textContent = '通过！正确加一 💪';
-            document.getElementById('retryDetail').textContent = data.judge.message || '句子自然地道！';
+            document.getElementById('retryDetail').textContent = data.judge.message ||
+                (isTranslationMode ? '翻译准确！' : '句子自然地道！');
         } else {
             document.getElementById('retryIcon').textContent = '❌';
             document.getElementById('retryMessage').textContent = '不通过';
             var retryHtml = (data.judge.message || '');
+            // 翻译模式额外展示原句
+            if (isTranslationMode && data.word && data.word.input_example) {
+                retryHtml = '<div class="example-source" style="margin-bottom:12px">' +
+                    '<p class="example-source-label">📖 原文例句</p>' +
+                    '<p class="example-source-text">' + data.word.input_example + '</p>' +
+                    '</div>' + retryHtml;
+            }
             document.getElementById('retryDetail').innerHTML = retryHtml;
         }
 
-        document.getElementById('submitBtn').textContent = '提交句子';
+        document.getElementById('submitBtn').textContent = isTranslationMode ? '提交翻译' : '提交句子';
         isLoading = false;
     })
     .catch(function(err) {
         alert('请求失败: ' + err.message);
         document.getElementById('sentenceInput').disabled = false;
         document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitBtn').textContent = '提交句子';
+        document.getElementById('submitBtn').textContent = isTranslationMode ? '提交翻译' : '提交句子';
         isLoading = false;
     });
 }
 
 function skipWord() {
-    if (!confirm('标记为已掌握，跳过造句？')) return;
+    const msg = currentActualMode === 'translation' ? '标记为已掌握，跳过这个单词？' : '标记为已掌握，跳过造句？';
+    if (!confirm(msg)) return;
 
     isLoading = true;
     fetch('/api/learn/skip', {
@@ -407,10 +480,22 @@ function dontKnowWord() {
 
         document.getElementById('judgeIcon').textContent = '📖';
         document.getElementById('judgeMessage').textContent = '先学习一下这个单词';
-        document.getElementById('judgeDetail').innerHTML =
-            '<strong>释义:</strong> ' + (data.word.definition || '暂无') +
-            '<br><strong>词性:</strong> ' + (data.word.pos || '') +
-            ' <strong>音标:</strong> ' + (data.word.phonetic || '');
+
+        var studyHtml = '';
+        if (data.word) {
+            studyHtml = '<strong>释义:</strong> ' + (data.word.definition || '暂无') +
+                '<br><strong>词性:</strong> ' + (data.word.pos || '') +
+                ' <strong>音标:</strong> ' + (data.word.phonetic || '');
+
+            // 翻译模式额外展示原文例句
+            if (currentActualMode === 'translation' && data.word.input_example) {
+                studyHtml = '<div class="example-source" style="margin-bottom:12px">' +
+                    '<p class="example-source-label">📖 原文例句</p>' +
+                    '<p class="example-source-text">' + data.word.input_example + '</p>' +
+                    '</div>' + studyHtml;
+            }
+        }
+        document.getElementById('judgeDetail').innerHTML = studyHtml;
 
         // 展示例句学习
         showExamples(data.word);

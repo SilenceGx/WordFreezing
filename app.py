@@ -14,7 +14,7 @@ from database.db import init_db, get_db, close_db, dict_from_row, dicts_from_row
 from models.wordbook import WordbookModel
 from models.word import WordModel
 from models.config import ConfigModel
-from services.ai_service import judge_sentence, batch_complete, test_connection, generate_examples
+from services.ai_service import judge_sentence, judge_translation, batch_complete, test_connection, generate_examples
 from services.import_service import parse_txt, parse_manual, process_import, confirm_import
 from services.review_service import process_review, mark_mastered, reset_word
 
@@ -51,9 +51,12 @@ def create_app():
     def wordbook_create():
         """创建词本"""
         name = request.form.get('name', '').strip()
+        mode = request.form.get('mode', 'writing')
         if not name:
             return jsonify({'success': False, 'message': '请输入词本名称'})
-        wordbook_id = WordbookModel.create(name)
+        if mode not in ('writing', 'translation'):
+            mode = 'writing'
+        wordbook_id = WordbookModel.create(name, mode=mode)
         return jsonify({'success': True, 'message': '创建成功', 'id': wordbook_id})
 
     @app.route('/wordbook/<int:wordbook_id>')
@@ -146,22 +149,26 @@ def create_app():
         wb = WordbookModel.get_by_id(wordbook_id)
         if not wb:
             return render_template('error.html', message='词本不存在'), 404
-        return render_template('learn.html', wordbook=wb)
+        return render_template('learn.html', wordbook=wb, wordbook_mode=wb.get('mode', 'writing'))
 
     @app.route('/api/learn/next/<int:wordbook_id>')
     def learn_next_word(wordbook_id):
         """获取下一个要学习的单词（先复习再新词）"""
+        # 获取词本模式
+        wb = WordbookModel.get_by_id(wordbook_id)
+        wb_mode = wb.get('mode', 'writing') if wb else 'writing'
+
         # 1. 先查出今日到期复习
         due = WordModel.get_due_reviews(wordbook_id, limit=1)
         if due:
             w = due[0]
-            return jsonify({'word': w, 'mode': 'review'})
+            return jsonify({'word': w, 'mode': 'review', 'wordbook_mode': wb_mode})
 
         # 2. 再取出新词
         new_words = WordModel.get_new_words(wordbook_id, limit=1)
         if new_words:
             w = new_words[0]
-            return jsonify({'word': w, 'mode': 'new'})
+            return jsonify({'word': w, 'mode': 'new', 'wordbook_mode': wb_mode})
 
         # 3. 全部学完
         # 检查是否有 learning 但非今日到期的词
@@ -174,10 +181,10 @@ def create_app():
         pending = row['cnt'] if row else 0
 
         if pending > 0:
-            return jsonify({'done': True,
+            return jsonify({'done': True, 'wordbook_mode': wb_mode,
                           'message': f'今日学习完成！还有 {pending} 个单词待复习（尚未到期）。'})
         else:
-            return jsonify({'done': True,
+            return jsonify({'done': True, 'wordbook_mode': wb_mode,
                           'message': '🎉 所有单词已掌握或已学完！'})
 
     @app.route('/api/learn/submit', methods=['POST'])
@@ -193,6 +200,42 @@ def create_app():
 
         # 调用 AI 评判
         result = judge_sentence(word['word'], sentence)
+
+        if 'error' in result:
+            return jsonify({'success': False, 'error': result['error']})
+
+        passed = result.get('result') == 'pass'
+
+        # 更新学习状态
+        review_result = process_review(word_id, passed)
+
+        response = {
+            'success': True,
+            'passed': passed,
+            'judge': result,
+            'review': review_result,
+            'word': word,
+        }
+
+        return jsonify(response)
+
+    @app.route('/api/learn/submit-translation', methods=['POST'])
+    def learn_submit_translation():
+        """提交翻译评判（翻译模式专用）"""
+        data = request.get_json()
+        word_id = data.get('word_id')
+        translation = data.get('translation', '').strip()
+
+        word = WordModel.get_by_id(word_id)
+        if not word:
+            return jsonify({'success': False, 'message': '单词不存在'})
+
+        example = word.get('input_example', '')
+        if not example:
+            return jsonify({'success': False, 'error': '该单词没有原文例句，无法使用翻译模式'})
+
+        # 调用 AI 翻译评判
+        result = judge_translation(word['word'], example, translation)
 
         if 'error' in result:
             return jsonify({'success': False, 'error': result['error']})
@@ -297,7 +340,8 @@ def create_app():
 
         # 如果选择新词本，先创建
         if wordbook_id == 0 and new_wordbook_name:
-            wordbook_id = WordbookModel.create(new_wordbook_name)
+            mode = request.form.get('mode', 'writing')
+            wordbook_id = WordbookModel.create(new_wordbook_name, mode=mode)
 
         if not wordbook_id:
             return jsonify({'success': False, 'message': '请选择或创建词本'})

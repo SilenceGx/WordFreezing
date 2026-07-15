@@ -33,7 +33,11 @@
             {% for wb in wordbooks %}
             <a href="{{ url_for('wordbook_detail', wordbook_id=wb.id) }}" class="wordbook-card">
                 <div class="wordbook-card-header">
-                    <h3>📖 {{ wb.name }}</h3>
+                    <h3>📖 {{ wb.name }}
+                        {% if wb.mode == 'translation' %}
+                        <span class="mode-badge mode-translation">🌍</span>
+                        {% endif %}
+                    </h3>
                     <span class="wordbook-count">{{ wb.total }} 词</span>
                 </div>
                 <div class="wordbook-stats-bar">
@@ -98,6 +102,13 @@
         <h3>创建新词本</h3>
         <form id="createWordbookForm" onsubmit="createWordbook(event)">
             <input type="text" name="name" placeholder="输入词本名称..." required autofocus>
+            <div class="form-group" style="margin-top:12px">
+                <label>学习模式:</label>
+                <select name="mode" class="form-select">
+                    <option value="writing">✍️ 造句模式 — 看单词写英文句子</option>
+                    <option value="translation">🌍 翻译模式 — 看原文例句写中文翻译</option>
+                </select>
+            </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-outline" onclick="hideModal(event)">取消</button>
                 <button type="submit" class="btn btn-primary">创建</button>

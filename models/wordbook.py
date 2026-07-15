@@ -8,13 +8,13 @@ class WordbookModel:
     """词本 CRUD"""
 
     @staticmethod
-    def create(name):
+    def create(name, mode='writing'):
         """创建新词本"""
         db = get_db()
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         cursor = db.execute(
-            'INSERT INTO wordbooks (name, created_at, updated_at) VALUES (?, ?, ?)',
-            (name, now, now)
+            'INSERT INTO wordbooks (name, mode, created_at, updated_at) VALUES (?, ?, ?, ?)',
+            (name, mode, now, now)
         )
         db.commit()
         return cursor.lastrowid

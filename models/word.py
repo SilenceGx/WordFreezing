@@ -9,14 +9,14 @@ class WordModel:
     """单词 CRUD"""
 
     @staticmethod
-    def create(wordbook_id, word, pos='', phonetic='', definition='', examples=None):
+    def create(wordbook_id, word, pos='', phonetic='', definition='', examples=None, input_example=''):
         """创建单词"""
         db = get_db()
         examples_json = json.dumps(examples or [], ensure_ascii=False)
         cursor = db.execute(
-            '''INSERT INTO words (wordbook_id, word, pos, phonetic, definition, examples)
-               VALUES (?, ?, ?, ?, ?, ?)''',
-            (wordbook_id, word, pos, phonetic, definition, examples_json)
+            '''INSERT INTO words (wordbook_id, word, pos, phonetic, definition, examples, input_example)
+               VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            (wordbook_id, word, pos, phonetic, definition, examples_json, input_example)
         )
         db.commit()
         return cursor.lastrowid
@@ -30,10 +30,11 @@ class WordModel:
         for w in words_data:
             examples_json = json.dumps(w.get('examples', []), ensure_ascii=False)
             db.execute(
-                '''INSERT INTO words (wordbook_id, word, pos, phonetic, definition, examples)
-                   VALUES (?, ?, ?, ?, ?, ?)''',
+                '''INSERT INTO words (wordbook_id, word, pos, phonetic, definition, examples, input_example)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)''',
                 (w['wordbook_id'], w['word'], w.get('pos', ''),
-                 w.get('phonetic', ''), w.get('definition', ''), examples_json)
+                 w.get('phonetic', ''), w.get('definition', ''),
+                 examples_json, w.get('input_example', ''))
             )
         db.commit()
 
@@ -98,7 +99,7 @@ class WordModel:
     def update(word_id, **kwargs):
         """更新单词字段"""
         db = get_db()
-        allowed = {'word', 'pos', 'phonetic', 'definition', 'examples',
+        allowed = {'word', 'pos', 'phonetic', 'definition', 'examples', 'input_example',
                    'status', 'review_stage', 'correct_count',
                    'last_review_date', 'next_review_date'}
         updates = {k: v for k, v in kwargs.items() if k in allowed}

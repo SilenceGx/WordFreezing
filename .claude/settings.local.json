@@ -23,7 +23,15 @@
       "Bash(curl -s -X POST http://127.0.0.1:5000/api/learn/submit -H 'Content-Type: application/json' -d '{\"word_id\": 56, \"sentence\": \"I will abandon this old book\"}')",
       "Bash(curl -s -X POST http://127.0.0.1:5000/api/learn/submit -H 'Content-Type: application/json' -d '{\"word_id\": 5, \"sentence\": \"I succumb to eat too much\"}')",
       "Bash(curl -s -X POST http://127.0.0.1:5000/api/learn/dont-know -H 'Content-Type: application/json' -d '{\"word_id\": 5}')",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m 'v1.0: 初始版本 — 纯 AI 造句评判模式 *)",
+      "Bash(git config *)",
+      "Bash(conda activate *)",
+      "Bash(curl -s -X POST http://127.0.0.1:5000/wordbook/create -d \"name=TestWB&mode=translation\")",
+      "Bash(kill %1)",
+      "Bash(wait)",
+      "Bash(curl -s http://127.0.0.1:5000/learn/3)",
+      "Bash(git commit -m 'feat: 新增翻译模式 — 阅读生词学习流程 *)"
     ]
   }
 }

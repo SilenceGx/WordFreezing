@@ -1,8 +1,9 @@
-"""AI 服务 - 句子评判 + 批量补全（抽象 DeepSeek/Ollama）
+"""AI 服务 - 句子评判 + 翻译评判 + 批量补全（抽象 DeepSeek/Ollama）
 
-提供两个核心功能：
+提供三个核心功能：
 1. judge_sentence(word, sentence) — 评判用户造句是否地道
-2. batch_complete(words) — 批量补全单词信息（词性、音标、释义、例句）
+2. judge_translation(word, example_sentence, user_translation) — 评判中文翻译是否准确
+3. batch_complete(words) — 批量补全单词信息（词性、音标、释义、例句）
 """
 
 import requests
@@ -194,6 +195,65 @@ def judge_sentence(word, sentence):
 
     # 解析失败，返回默认通过（容错）
     return {'result': 'pass', 'message': '句子已提交'}
+
+
+# 翻译评判提示词
+TRANSLATION_JUDGE_PROMPT = """你是一位双语老师。你会收到一个"英文单词"、一个包含该词的"英文原句"以及用户对该句的"中文翻译"。
+
+请评判中文翻译是否准确传达了原句的核心意思。
+
+评分标准：
+1. ✅ 核心意思正确 — 语义方向正确，没有关键信息遗漏或反转
+2. ✅ 意译可接受 — 不需要字字对应，调整语序、用同义词都可以
+3. ❌ 中英混杂 — 不要出现 "他 succumbed 了" 这种混合表达
+4. ❌ 意思完全相反 — "他抵抗住了诱惑" vs "他屈服于诱惑"
+
+返回严格的 JSON 格式：
+如果核心意思传达正确 → {"result": "pass", "message": "翻译准确，核心意思传达正确！"}
+如果有问题 → {"result": "fail", "message": "具体说明哪里翻译不准确或偏离原意"}
+
+注意：
+- message 需说明问题所在以及正确的理解方向
+- 不要给出完整的标准翻译（系统会另外展示）
+- 返回格式必须是严格的 JSON，不要有多余内容
+"""
+
+
+def judge_translation(word, example_sentence, user_translation):
+    """评判用户的中文翻译是否准确
+
+    Args:
+        word: str，目标单词
+        example_sentence: str，包含该词的英文原句
+        user_translation: str，用户写的中文翻译
+
+    Returns:
+        dict: {'result': 'pass'/'fail', 'message': str}
+              或 {'error': str}
+    """
+    prompt = (
+        f"单词: {word}\n"
+        f"英文原句: {example_sentence}\n"
+        f"用户的中文翻译: {user_translation}\n\n"
+        f"请判断用户的翻译是否准确传达了原句的核心意思。"
+    )
+
+    result = _call_ai(
+        messages=[{'role': 'user', 'content': prompt}],
+        system_prompt=TRANSLATION_JUDGE_PROMPT,
+        temperature=0.3,
+        max_tokens=300,
+    )
+
+    if 'error' in result:
+        return result
+
+    parsed = _extract_json(result['content'])
+    if parsed and 'result' in parsed:
+        return parsed
+
+    # 解析失败，返回默认通过（容错）
+    return {'result': 'pass', 'message': '翻译已提交'}
 
 
 def generate_examples(word):
