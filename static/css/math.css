@@ -1,0 +1,177 @@
+/* MathPin — 数学模块样式 */
+
+/* 导航数学链接 */
+.nav-math {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 4px 10px !important;
+}
+
+/* 待复习提示 */
+.alert-review {
+    background: #fff3e0;
+    border: 1px solid #ffb74d;
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+    color: #e65100;
+}
+
+/* KaTeX 预览区 */
+.katex-preview {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 40px;
+    margin-top: 8px;
+    overflow-x: auto;
+}
+
+/* 学习页布局 */
+.learn-problem {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.3rem;
+    overflow-x: auto;
+}
+
+.learn-answer-area {
+    margin-bottom: 20px;
+}
+
+.learn-answer-area textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    line-height: 1.6;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.learn-answer-area textarea:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+/* 评判结果卡片 */
+.judge-result {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.judge-node {
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.judge-node.hit {
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+}
+
+.judge-node.miss {
+    background: #fbe9e7;
+    border-left: 4px solid #ff5722;
+}
+
+.judge-node .node-title {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.judge-node .node-feedback {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.judge-overall {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* 讨论区 */
+.discuss-area {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 16px;
+    overflow: hidden;
+}
+
+.discuss-messages {
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.discuss-msg {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.discuss-msg.user {
+    background: #e3f2fd;
+    margin-left: 40px;
+}
+
+.discuss-msg.ai {
+    background: var(--bg-secondary);
+    margin-right: 40px;
+}
+
+.discuss-msg .msg-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.discuss-input-area {
+    display: flex;
+    border-top: 1px solid var(--border);
+}
+
+.discuss-input-area input {
+    flex: 1;
+    border: none;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.discuss-input-area button {
+    border: none;
+    background: var(--accent);
+    color: white;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.discuss-input-area button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

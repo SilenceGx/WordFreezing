@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathPin — 创建题目</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/math.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <style>
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; }
+        .step-indicator { display: flex; gap: 8px; margin-bottom: 24px; }
+        .step-dot {
+            flex: 1; text-align: center; padding: 10px;
+            background: var(--bg-secondary); border-radius: 8px;
+            color: var(--text-secondary); font-size: 0.9rem;
+        }
+        .step-dot.active { background: var(--accent); color: white; }
+        .step-dot.done { background: var(--success); color: white; }
+        .preview-box {
+            background: var(--bg-secondary); border-radius: 8px; padding: 16px;
+            margin-top: 8px; min-height: 40px; border: 1px solid var(--border);
+            font-size: 1.1rem; overflow-x: auto;
+        }
+        .node-card {
+            background: var(--bg-secondary); border-radius: 8px; padding: 16px;
+            margin-bottom: 12px; border: 1px solid var(--border);
+        }
+        .node-card .form-group { margin-bottom: 8px; }
+        .node-card label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 2px; }
+        .node-card input, .node-card textarea {
+            width: 100%; padding: 6px 10px; border: 1px solid var(--border);
+            border-radius: 6px; font-size: 0.9rem; box-sizing: border-box;
+        }
+        .node-card textarea { resize: vertical; min-height: 50px; }
+        .node-number {
+            display: inline-block; width: 24px; height: 24px; line-height: 24px;
+            text-align: center; background: var(--accent); color: white;
+            border-radius: 50%; font-size: 0.8rem; font-weight: 700; margin-right: 8px;
+        }
+        .btn-icon { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.1rem; padding: 4px; }
+        .btn-icon:hover { color: var(--danger); }
+        .nav-tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+        .nav-tabs a {
+            padding: 8px 20px; border-radius: 8px 8px 0 0; text-decoration: none;
+            color: var(--text-secondary); background: var(--bg-secondary);
+            font-size: 0.9rem;
+        }
+        .nav-tabs a.active { background: var(--accent); color: white; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="{{ url_for('math.index') }}" class="nav-brand">📐 MathPin</a>
+            <div class="nav-links">
+                <a href="{{ url_for('math.index') }}" class="active">题本</a>
+                <a href="{{ url_for('math.create') }}">创建</a>
+                <a href="{{ url_for('index') }}">← 返回英语</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" style="max-width: 800px;">
+        <h1>创建新题目</h1>
+
+        <!-- 步骤指示器 -->
+        <div class="step-indicator">
+            <div class="step-dot active" id="step1Indicator">1. 题目信息</div>
+            <div class="step-dot" id="step2Indicator">2. 标注关键节点</div>
+        </div>
+
+        <!-- Step 1: 题目和解答 -->
+        <form id="step1Form" class="wizard-step active">
+            <div class="form-group">
+                <label>题本</label>
+                <select id="bookSelect" class="form-input" style="width:100%;">
+                    <option value="">-- 选择已有题本 --</option>
+                    {% for bk in books %}
+                    <option value="{{ bk.id }}">{{ bk.name }} ({{ bk.total }}题)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>或创建新题本</label>
+                <input type="text" id="newBookName" class="form-input" placeholder="新题本名称" style="width:100%;">
+            </div>
+            <hr>
+            <div class="form-group">
+                <label>题目（LaTeX）</label>
+                <textarea id="problemText" class="form-input" rows="4" placeholder="\int_0^1 x e^x \, dx" style="width:100%;font-family:monospace;">\int_0^1 x e^x \, dx</textarea>
+            </div>
+            <div class="form-group">
+                <label>预览</label>
+                <div class="preview-box" id="problemPreview">预览将在此显示</div>
+            </div>
+            <div class="form-group">
+                <label>完整解答（LaTeX）</label>
+                <textarea id="solutionText" class="form-input" rows="6" placeholder="使用分部积分法，令 u=x, dv=e^x dx..." style="width:100%;font-family:monospace;">使用分部积分法，令 $u=x$, $dv=e^x dx$，则 $du=dx$, $v=e^x$。
+
+$$\int_0^1 x e^x dx = \left. x e^x \right|_0^1 - \int_0^1 e^x dx = e - (e - 1) = 1$$</textarea>
+            </div>
+            <div class="form-group">
+                <label>预览</label>
+                <div class="preview-box" id="solutionPreview">预览将在此显示</div>
+            </div>
+            <div style="text-align:right;margin-top:16px;">
+                <button type="button" class="btn btn-primary" onclick="goToStep2()">下一步：标注节点 →</button>
+            </div>
+        </form>
+
+        <!-- Step 2: 标注关键节点 -->
+        <div id="step2Form" class="wizard-step">
+            <p style="color:var(--text-secondary);margin-bottom:16px;">
+                在解答中标记 3-5 个关键节点。每个节点是解题过程中最核心的转折点或技巧。
+            </p>
+
+            <div id="nodeList"></div>
+
+            <button type="button" class="btn btn-outline" onclick="addNode()">+ 添加节点</button>
+
+            <div style="text-align:right;margin-top:20px;">
+                <button type="button" class="btn btn-outline" onclick="goToStep1()">← 返回修改</button>
+                <button type="button" class="btn btn-primary" onclick="submitCreate()">✅ 确认创建</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let nodeCounter = 0;
+        let nodeTemplates = [];
+
+        // ===== 步骤切换 =====
+        function goToStep2() {
+            const problemText = document.getElementById('problemText').value.trim();
+            const solutionText = document.getElementById('solutionText').value.trim();
+            if (!problemText || !solutionText) {
+                alert('请输入题目和解答');
+                return;
+            }
+            document.getElementById('step1Form').classList.remove('active');
+            document.getElementById('step2Form').classList.add('active');
+            document.getElementById('step1Indicator').classList.remove('active');
+            document.getElementById('step1Indicator').classList.add('done');
+            document.getElementById('step2Indicator').classList.add('active');
+
+            // 预填 3 个默认节点
+            if (nodeCounter === 0) {
+                for (let i = 0; i < 3; i++) addNode();
+            }
+        }
+
+        function goToStep1() {
+            document.getElementById('step2Form').classList.remove('active');
+            document.getElementById('step1Form').classList.add('active');
+            document.getElementById('step1Indicator').classList.add('active');
+            document.getElementById('step1Indicator').classList.remove('done');
+            document.getElementById('step2Indicator').classList.remove('active');
+        }
+
+        // ===== 节点管理 =====
+        function addNode() {
+            nodeCounter++;
+            const idx = nodeCounter;
+            const div = document.createElement('div');
+            div.className = 'node-card';
+            div.id = 'node-' + idx;
+            div.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span><span class="node-number">${idx}</span> 关键节点</span>
+                    <button type="button" class="btn-icon" onclick="removeNode(${idx})" title="删除">✕</button>
+                </div>
+                <div class="form-group">
+                    <label>标题（简短概括这一步）</label>
+                    <input type="text" class="node-title" placeholder="如：确定使用分部积分法">
+                </div>
+                <div class="form-group">
+                    <label>方法描述（关键思路）</label>
+                    <textarea class="node-description" placeholder="如：观察到被积函数是 x 和 e^x 的乘积，适合分部积分"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>关键公式（LaTeX，可选）</label>
+                    <input type="text" class="node-formula" placeholder="\int u dv = uv - \int v du">
+                </div>
+            `;
+            document.getElementById('nodeList').appendChild(div);
+        }
+
+        function removeNode(idx) {
+            const el = document.getElementById('node-' + idx);
+            if (el && confirm('确定删除这个节点？')) el.remove();
+        }
+
+        function collectNodes() {
+            const nodes = [];
+            const cards = document.querySelectorAll('.node-card');
+            cards.forEach((card, i) => {
+                const title = card.querySelector('.node-title').value.trim();
+                const description = card.querySelector('.node-description').value.trim();
+                const formula = card.querySelector('.node-formula').value.trim();
+                if (title && description) {
+                    nodes.push({ title, description, formula });
+                }
+            });
+            return nodes;
+        }
+
+        // ===== 提交创建 =====
+        async function submitCreate() {
+            const bookId = parseInt(document.getElementById('bookSelect').value) || null;
+            const newBookName = document.getElementById('newBookName').value.trim();
+            const problemText = document.getElementById('problemText').value.trim();
+            const solutionText = document.getElementById('solutionText').value.trim();
+            const nodes = collectNodes();
+
+            if (!bookId && !newBookName) {
+                alert('请选择或创建题本');
+                return;
+            }
+            if (!problemText || !solutionText) {
+                alert('题目和解答不能为空');
+                return;
+            }
+            if (nodes.length < 1) {
+                alert('请至少添加 1 个关键节点');
+                return;
+            }
+
+            const resp = await fetch('{{ url_for("math.create") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    book_id: bookId,
+                    new_book_name: newBookName,
+                    problem_text: problemText,
+                    solution_text: solutionText,
+                    nodes: nodes,
+                }),
+            });
+            const result = await resp.json();
+            if (result.success) {
+                alert('✅ ' + result.message);
+                window.location.href = '{{ url_for("math.book_detail", book_id=0) }}'.replace('0', result.book_id);
+            } else {
+                alert('❌ ' + result.message);
+            }
+        }
+
+        // ===== LaTeX 实时预览 =====
+        function renderPreview(elementId, sourceId) {
+            const source = document.getElementById(sourceId).value;
+            const preview = document.getElementById(elementId);
+            try {
+                const html = katex.renderToString(source, {
+                    throwOnError: false,
+                    displayMode: source.includes('$$'),
+                    output: 'html',
+                });
+                preview.innerHTML = html || '(空)';
+            } catch(e) {
+                // 尝试渲染行内部分
+                let text = source;
+                // 简单处理：尝试渲染整段，失败就显示纯文本
+                try {
+                    const html = katex.renderToString(text, {
+                        throwOnError: false,
+                        displayMode: false,
+                    });
+                    preview.innerHTML = html;
+                } catch(e2) {
+                    preview.textContent = text || '(空)';
+                }
+            }
+        }
+
+        document.getElementById('problemText').addEventListener('input', function() {
+            renderPreview('problemPreview', 'problemText');
+        });
+        document.getElementById('solutionText').addEventListener('input', function() {
+            renderPreview('solutionPreview', 'solutionText');
+        });
+        // 初始渲染
+        setTimeout(() => {
+            renderPreview('problemPreview', 'problemText');
+            renderPreview('solutionPreview', 'solutionText');
+        }, 500);
+    </script>
+</body>
+</html>

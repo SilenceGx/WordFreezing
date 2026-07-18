@@ -166,6 +166,11 @@ def _extract_json(text):
     return None
 
 
+# 公开别名（数学模块等需要直接调用 AI 的场景）
+call_ai = _call_ai
+extract_json = _extract_json
+
+
 def judge_sentence(word, sentence):
     """评判用户造句
 

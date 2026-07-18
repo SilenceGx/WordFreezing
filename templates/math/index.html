@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathPin — 数学关键节点学习</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/math.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="{{ url_for('math.index') }}" class="nav-brand">📐 MathPin</a>
+            <div class="nav-links">
+                <a href="{{ url_for('math.index') }}" class="active">题本</a>
+                <a href="{{ url_for('math.create') }}">创建</a>
+                <a href="{{ url_for('index') }}">← 返回英语</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- 待复习提示 -->
+        {% if today_count > 0 %}
+        <div class="alert-review">
+            📅 今日待复习 <strong>{{ today_count }}</strong> 个关键节点
+        </div>
+        {% else %}
+        <div class="alert-review" style="background:var(--bg-secondary);border-color:var(--border);color:var(--text-secondary);">
+            ✅ 今日无待复习节点
+        </div>
+        {% endif %}
+
+        <!-- 题本列表 -->
+        <div class="wordbook-grid">
+            {% for bk in books %}
+            <a href="{{ url_for('math.book_detail', book_id=bk.id) }}" class="wordbook-card">
+                <div class="wordbook-card-header">
+                    <h3>📖 {{ bk.name }}</h3>
+                    <span class="wordbook-count">{{ bk.total }} 题</span>
+                </div>
+                <div class="wordbook-stats">
+                    <span class="stat-badge stat-new">新题 {{ bk.new_count }}</span>
+                    <span class="stat-badge stat-learning">复习 {{ bk.learning_count }}</span>
+                    <span class="stat-badge stat-mastered">✅ {{ bk.mastered_count }}</span>
+                </div>
+            </a>
+            {% else %}
+            <div class="empty-state" style="grid-column:1/-1;">
+                <p style="text-align:center;color:var(--text-secondary);padding:40px;">
+                    还没有题本。<br>
+                    <a href="{{ url_for('math.create') }}" class="btn btn-primary" style="margin-top:12px;display:inline-block;">
+                        + 创建第一道题
+                    </a>
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 全局统计 -->
+        <div style="margin-top:32px;padding:16px;background:var(--bg-secondary);border-radius:10px;text-align:center;color:var(--text-secondary);font-size:0.9rem;">
+            📊 总计 {{ stats.total }} 题 | ✅ 已掌握 {{ stats.mastered_count }} 题
+        </div>
+    </main>
+</body>
+</html>
