@@ -447,3 +447,168 @@ if word.status == 'learning':
    - 本地词典查询 L0 缓存
    - 学习页面预加载下一个单词
    - 数据库自动迁移兼容旧表结构
+
+---
+
+## 八、MathPin — 数学关键节点学习模块
+
+> 基于同一项目扩展的数学模块。通过 AI 评判 + 间隔重复，针对大学数学题逐个关键节点突破。
+
+### 8.1 核心理念
+
+区别于"看答案觉得自己会了"的传统错题本，MathPin 要求用户**写出完整推导**，AI 对照预设的**关键节点清单**逐条评判踩中与否。每个节点独立的间隔重复，复习时只考薄弱节点。
+
+### 8.2 产品定位
+
+| 维度 | 决策 |
+|---|---|
+| 目标用户 | 个人（大学数学：高数/线代/概率） |
+| 学习流程 | 完整解答 → AI 逐节点评判 → 查看遗漏节点 → 追问讨论 |
+| 技术栈 | 与英语模块同栈（Flask + SQLite + Jinja2 + KaTeX） |
+| 代码组织 | Flask Blueprint `routes/math/`，前缀 `/math` |
+
+### 8.3 数据模型
+
+#### 题本 (ProblemBook)
+
+- 用户创建的题本集合
+- 每个题本有：名称、创建时间
+- 题本内包含多个题目
+
+#### 题目 (Problem)
+
+| 字段 | 说明 |
+|---|---|
+| book_id | 所属题本 |
+| problem_text | LaTeX 题目 |
+| solution_text | LaTeX 完整解答 |
+| status | `new` / `learning` / `mastered` |
+
+#### 关键节点 (KeyNode) — 核心学习单元
+
+| 字段 | 说明 |
+|---|---|
+| problem_id | 所属题目 |
+| node_order | 排序（1-5） |
+| title | 标题（如"确定使用分部积分法"） |
+| description | 方法描述 |
+| formula | 关键公式（LaTeX，可选） |
+| status | `new` / `learning` / `mastered` |
+| review_stage | 复习阶段 0-2 → mastered |
+| correct_count | 累计通过次数 |
+| next_review_date | 下次复习日期 |
+
+### 8.4 学习流程
+
+```
+题本首页 → 创建向导 → 学习页 → AI评判 → 追问讨论 → 间隔重复
+                                      ↓
+                                下一题 / 到期复习
+```
+
+#### 创建向导（两步）
+
+1. **题目信息**：选择/创建题本，输入 LaTeX 题目和解答，KaTeX 实时预览
+2. **标注节点**：在解答上标记 3-5 个关键节点（标题 + 方法描述 + 关键公式）
+
+#### 学习流程
+
+1. **展示题目**（🈚解答 🈚提示，左对齐，Times New Roman 字体）
+2. **用户写完整解答**（支持 LaTeX，保留换行）
+3. **AI 对照节点清单评判**（逐条返回踩中/遗漏 + 反馈）
+4. **展示结果**：踩中 X/Y 个节点，遗漏节点直接展示答案内容
+5. **追问讨论**：用户可以自由提问，AI 以导师身份解答
+6. **切换题目**：清除追问会话，进入下一题
+
+#### 不会处理
+
+点击「❌ 不会」→ 不调 AI 评判，所有节点直接标记 miss → 展示全部节点内容
+
+### 8.5 间隔重复
+
+与英语模块完全一致的算法：
+
+```
+new → 首次踩中 → mastered（直接斩）
+new → 首次遗漏 → learning(stage 0, 1天后)
+
+learning(stage 0) → 踩中 → stage 1 (3天后)
+learning(stage 1) → 踩中 → stage 2 (7天后)
+learning(stage 2) → 踩中 → mastered ✅
+
+任何 stage 遗漏 → 退回 stage 0
+```
+
+复习调度：题目到期时只展示**到期的节点**，已掌握的节点不重复出现。
+
+### 8.6 功能清单
+
+| 功能 | 路由 | 说明 |
+|------|------|------|
+| 数学首页 | `GET /math/` | 题本卡片列表 + 待复习数 |
+| 创建题本 | `POST /math/api/books/create` | 弹窗创建 |
+| 两步创建向导 | `GET/POST /math/create` | 题目+解答→节点标注 |
+| 题本详情 | `GET /math/book/<id>` | 题目列表 |
+| 学习页 | `GET /math/learn/<id>` | 学习界面 |
+| 下一题 | `GET /math/api/next/<id>` | 先复习到期再出新题 |
+| AI 评判 | `POST /math/api/judge` | 提交解答→逐节点评判 |
+| 不会 | `POST /math/api/dont-know` | 全部标记 miss |
+| 追问讨论 | `POST /math/api/discuss` | 多轮对话 |
+| 清除会话 | `POST /math/api/discuss/clear` | 切换题目时调用 |
+| 统计 | `GET /math/stats` | 全局统计 + 题本进度 |
+| 删除题目 | `POST /math/api/problem/<id>/delete` | |
+
+### 8.7 技术方案
+
+#### AI 评判
+
+使用 `services/ai_service.py` 的 `call_ai()` / `extract_json()` 函数。评判提示词：
+
+- 发送题目 + 序号编号的节点清单 + 用户解答
+- AI 返回 `{node_results: [{node_id, hit, feedback}], overall}`
+- 后端通过序号位置反查出真实 DB ID，附上节点信息返回前端
+
+#### LaTeX 渲染
+
+- 引入 KaTeX CDN（`katex.min.js` + `katex.min.css`）
+- 学习页使用 KaTeX 实时渲染题目和解答
+- 创建向导使用 KaTeX 实时预览
+- 追问讨论中 AI 回复含 LaTeX 时自动渲染
+
+#### 追问会话
+
+- 服务端字典存储：`discuss_sessions[problem_id] = [messages]`
+- 切换题目时清除（前端调用 `/math/api/discuss/clear`）
+- 每个会话包含 system prompt，带题目和节点背景
+
+### 8.8 项目结构（数学部分）
+
+```
+routes/math/
+├── __init__.py              # Blueprint 定义（前缀 /math）
+├── routes.py                # 所有数学路由
+└── models/
+    ├── problem_book.py      # 题本 CRUD + 统计
+    ├── problem.py           # 题目 CRUD + 复习查询 + 状态同步
+    └── key_node.py          # 节点 CRUD + 间隔重复算法
+
+templates/math/
+├── index.html               # 题本首页（含创建题本弹窗）
+├── create.html              # 两步创建向导
+├── book.html                # 题本详情
+├── learn.html               # 学习页面
+└── stats.html               # 统计页面
+
+static/
+├── css/math.css             # 数学样式（Times New Roman、试卷排版）
+└── js/math/learn.js         # 学习页 JS
+```
+
+### 8.9 待办/可优化
+
+- [ ] 拍照上传题目（OCR → LaTeX）
+- [ ] 预设节点模板库（常见题型自动推荐关键节点）
+- [ ] 学习页预加载下一题
+- [ ] 追问会话持久化（重启后保留历史）
+- [ ] 题目难度标签
+- [ ] 数学统计图表
