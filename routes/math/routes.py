@@ -98,6 +98,18 @@ def api_delete_problem(problem_id):
     return jsonify({'success': True, 'message': '已删除'})
 
 
+# ========== 创建题本 ==========
+@math_bp.route('/api/books/create', methods=['POST'])
+def api_create_book():
+    """创建题本"""
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'success': False, 'message': '请输入题本名称'})
+    book_id = ProblemBookModel.create(name)
+    return jsonify({'success': True, 'message': '创建成功', 'id': book_id})
+
+
 # ========== 统计 ==========
 @math_bp.route('/stats')
 def stats():
