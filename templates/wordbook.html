@@ -23,13 +23,13 @@
         </div>
         <div class="wordbook-header-actions">
             <button class="btn btn-outline" onclick="editWordbookName()">✏️ 编辑</button>
-            <a href="{{ url_for('learn', wordbook_id=wordbook.id) }}" class="btn btn-primary">▶ 开始学习</a>
-            <a href="{{ url_for('import_page') }}?wordbook_id={{ wordbook.id }}" class="btn btn-outline">📥 导入追加</a>
+            <a href="{{ url_for('english.learn', wordbook_id=wordbook.id) }}" class="btn btn-primary">▶ 开始学习</a>
+            <a href="{{ url_for('english.import_page') }}?wordbook_id={{ wordbook.id }}" class="btn btn-outline">📥 导入追加</a>
             <div class="dropdown">
                 <button class="btn btn-outline" onclick="toggleExport()">📤 导出 ▾</button>
                 <div class="dropdown-menu" id="exportMenu" style="display:none">
-                    <a href="{{ url_for('wordbook_export', wordbook_id=wordbook.id, fmt='json') }}" class="dropdown-item">JSON 格式</a>
-                    <a href="{{ url_for('wordbook_export', wordbook_id=wordbook.id, fmt='csv') }}" class="dropdown-item">CSV 格式 (Excel)</a>
+                    <a href="{{ url_for('english.wordbook_export', wordbook_id=wordbook.id, fmt='json') }}" class="dropdown-item">JSON 格式</a>
+                    <a href="{{ url_for('english.wordbook_export', wordbook_id=wordbook.id, fmt='csv') }}" class="dropdown-item">CSV 格式 (Excel)</a>
                 </div>
             </div>
             <button class="btn btn-danger" onclick="deleteWordbook()">🗑️ 删除词本</button>
@@ -38,7 +38,7 @@
 
     <!-- 搜索和筛选 -->
     <div class="wordbook-toolbar">
-        <form class="search-form" method="GET" action="{{ url_for('wordbook_detail', wordbook_id=wordbook.id) }}">
+        <form class="search-form" method="GET" action="{{ url_for('english.wordbook_detail', wordbook_id=wordbook.id) }}">
             <input type="text" name="search" placeholder="搜索单词..." value="{{ search }}" class="search-input">
             <select name="status" class="filter-select" onchange="this.form.submit()">
                 <option value="">全部状态</option>
@@ -51,7 +51,7 @@
 
     <!-- 单词表格 -->
     {% if data.words %}
-    <form id="batchForm" method="POST" action="{{ url_for('words_batch', wordbook_id=wordbook.id) }}">
+    <form id="batchForm" method="POST" action="{{ url_for('english.words_batch', wordbook_id=wordbook.id) }}">
         <table class="word-table">
             <thead>
                 <tr>
@@ -86,7 +86,7 @@
                     </td>
                     <td class="action-cell">
                         {% if w.status != 'mastered' %}
-                        <form method="POST" action="{{ url_for('learn_skip') }}" style="display:inline">
+                        <form method="POST" action="{{ url_for('english.learn_skip') }}" style="display:inline">
                             <input type="hidden" name="word_id" value="{{ w.id }}">
                             <button type="button" class="btn-sm btn-success" onclick="markMastered({{ w.id }})">斩</button>
                         </form>
@@ -129,7 +129,7 @@
     {% else %}
     <div class="empty-state">
         <p>词本中还没有单词</p>
-        <a href="{{ url_for('import_page') }}" class="btn btn-primary">导入单词</a>
+        <a href="{{ url_for('english.import_page') }}" class="btn btn-primary">导入单词</a>
     </div>
     {% endif %}
 </div>
@@ -177,7 +177,7 @@ function editWordbookName() {
     if (name && name.trim()) {
         const data = new FormData();
         data.append('name', name.trim());
-        fetch('{{ url_for("wordbook_edit", wordbook_id=wordbook.id) }}', { method: 'POST', body: data })
+        fetch('{{ url_for("english.wordbook_edit", wordbook_id=wordbook.id) }}', { method: 'POST', body: data })
             .then(r => r.json())
             .then(res => { if (res.success) location.reload(); });
     }
@@ -185,7 +185,7 @@ function editWordbookName() {
 
 function markMastered(wordId) {
     if (!confirm('标记为已掌握？')) return;
-    fetch('{{ url_for("learn_skip") }}', {
+    fetch('{{ url_for("english.learn_skip") }}', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({word_id: wordId})
@@ -203,7 +203,7 @@ function resetWord(wordId) {
 
 function deleteWordbook() {
     if (!confirm('确定删除整个词本？（所有单词也会被删除）')) return;
-    fetch('{{ url_for("wordbook_delete", wordbook_id=wordbook.id) }}', { method: 'POST' })
+    fetch('{{ url_for("english.wordbook_delete", wordbook_id=wordbook.id) }}', { method: 'POST' })
         .then(r => r.json())
         .then(res => {
             if (res.success) window.location.href = '{{ url_for("index") }}';

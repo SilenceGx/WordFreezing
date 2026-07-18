@@ -41,7 +41,7 @@
             {% for wb in wordbooks %}
             <div class="wordbook-progress-item">
                 <div class="progress-item-header">
-                    <a href="{{ url_for('wordbook_detail', wordbook_id=wb.id) }}" class="progress-wordbook-name">
+                    <a href="{{ url_for('english.wordbook_detail', wordbook_id=wb.id) }}" class="progress-wordbook-name">
                         📖 {{ wb.name }}
                     </a>
                     <span class="progress-total">{{ wb.total }} 词</span>

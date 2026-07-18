@@ -1,5 +1,17 @@
 # 开发日志
 
+## 2026-07-18 — 蓝图重构 + 数学模块第零步
+
+### 架构重构
+- [x] 创建 `feat/math-module` 分支（基于 `feat/translation-mode`）
+- [x] 数据库 .bak 备份
+- [x] .gitignore 追加 `*.bak` 排除
+- [x] `app.py` 路由拆分为 Flask Blueprint 结构：
+  - `routes/english/` — 英语模块蓝图（词本/单词/学习/导入/导出）
+  - `app.py` 保留共享路由（首页/统计/设置/数据管理）
+- [x] 所有模板 `url_for()` 更新为蓝图限定名（`english.xxx`）
+- [x] 验证 26 条路由全部注册成功，英语数据零影响
+
 ## 2026-07-15 — 翻译模式 + Git 版本管理
 
 ### 版本管理

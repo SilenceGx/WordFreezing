@@ -12,7 +12,7 @@
                 <p>先复习再学新词，巩固记忆效果更好 ✨</p>
             </div>
             {% if today_count > 0 %}
-                <a href="{{ url_for('learn', wordbook_id=wordbooks[0]['id']) if wordbooks else '#' }}"
+                <a href="{{ url_for('english.learn', wordbook_id=wordbooks[0]['id']) if wordbooks else '#' }}"
                    class="btn btn-primary">开始复习 →</a>
             {% endif %}
         </div>
@@ -24,14 +24,14 @@
             <h2>📖 我的词本</h2>
             <div class="section-actions">
                 <button class="btn btn-outline" onclick="showCreateWordbook()">➕ 创建新词本</button>
-                <a href="{{ url_for('import_page') }}" class="btn btn-outline">📥 导入词本</a>
+                <a href="{{ url_for('english.import_page') }}" class="btn btn-outline">📥 导入词本</a>
             </div>
         </div>
 
         {% if wordbooks %}
         <div class="wordbook-grid">
             {% for wb in wordbooks %}
-            <a href="{{ url_for('wordbook_detail', wordbook_id=wb.id) }}" class="wordbook-card">
+            <a href="{{ url_for('english.wordbook_detail', wordbook_id=wb.id) }}" class="wordbook-card">
                 <div class="wordbook-card-header">
                     <h3>📖 {{ wb.name }}
                         {% if wb.mode == 'translation' %}
@@ -64,7 +64,7 @@
             <p>还没有词本，开始创建或导入吧！</p>
             <div class="empty-actions">
                 <button class="btn btn-primary" onclick="showCreateWordbook()">创建新词本</button>
-                <a href="{{ url_for('import_page') }}" class="btn btn-outline">导入词本</a>
+                <a href="{{ url_for('english.import_page') }}" class="btn btn-outline">导入词本</a>
             </div>
         </div>
         {% endif %}
@@ -134,7 +134,7 @@ function createWordbook(e) {
     const form = e.target;
     const data = new FormData(form);
 
-    fetch('{{ url_for("wordbook_create") }}', { method: 'POST', body: data })
+    fetch('{{ url_for("english.wordbook_create") }}', { method: 'POST', body: data })
         .then(r => r.json())
         .then(res => {
             if (res.success) {

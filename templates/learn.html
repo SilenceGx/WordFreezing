@@ -5,7 +5,7 @@
 <div class="learn-page">
     <!-- 顶部导航 -->
     <div class="learn-header">
-        <a href="{{ url_for('wordbook_detail', wordbook_id=wordbook.id) }}" class="back-link">← {{ wordbook.name }}</a>
+        <a href="{{ url_for('english.wordbook_detail', wordbook_id=wordbook.id) }}" class="back-link">← {{ wordbook.name }}</a>
         <span class="learn-progress" id="progressInfo">加载中...</span>
     </div>
 
@@ -552,7 +552,7 @@ function showDone(message) {
             <div class="done-icon">🎉</div>
             <h2>完成！</h2>
             <p>${message}</p>
-            <a href="{{ url_for('wordbook_detail', wordbook_id=wordbook.id) }}" class="btn btn-primary">
+            <a href="{{ url_for('english.wordbook_detail', wordbook_id=wordbook.id) }}" class="btn btn-primary">
                 返回词本
             </a>
         </div>

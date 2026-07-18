@@ -122,7 +122,7 @@ function previewImport(e) {
     const form = document.getElementById('importForm');
     const data = new FormData(form);
 
-    fetch('{{ url_for("import_preview") }}', { method: 'POST', body: data })
+    fetch('{{ url_for("english.import_preview") }}', { method: 'POST', body: data })
         .then(r => r.json())
         .then(res => {
             if (!res.success) {
@@ -171,7 +171,7 @@ function confirmImport() {
             importResults[idx].input_example = input.value.trim();
         }
     });
-    fetch('{{ url_for("import_confirm") }}', {
+    fetch('{{ url_for("english.import_confirm") }}', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
