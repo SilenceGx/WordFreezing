@@ -1,5 +1,10 @@
 /* MathPin — 数学模块样式 */
 
+/* 数学页面全局字体（模拟试卷排版） */
+body {
+    font-family: 'Times New Roman', 'CMU Serif', 'Latin Modern Roman', 'Noto Serif CJK SC', serif;
+}
+
 /* 导航数学链接 */
 .nav-math {
     background: rgba(255, 255, 255, 0.1);
@@ -29,16 +34,20 @@
     overflow-x: auto;
 }
 
-/* 学习页布局 */
+/* 学习页布局 — 题目展示（仿真题排版） */
 .learn-problem {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 24px;
+    padding: 24px 28px;
     margin-bottom: 20px;
-    text-align: center;
-    font-size: 1.3rem;
+    text-align: left;
+    font-size: 1.05rem;
+    font-family: 'Times New Roman', 'CMU Serif', 'Latin Modern Roman', serif;
+    line-height: 1.8;
     overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .learn-answer-area {
@@ -52,11 +61,12 @@
     border: 2px solid var(--border);
     border-radius: 10px;
     font-size: 1rem;
-    font-family: inherit;
-    line-height: 1.6;
+    font-family: 'Times New Roman', 'CMU Serif', 'Latin Modern Roman', serif;
+    line-height: 1.8;
     resize: vertical;
     box-sizing: border-box;
     transition: border-color 0.2s;
+    white-space: pre-wrap;
 }
 
 .learn-answer-area textarea:focus {

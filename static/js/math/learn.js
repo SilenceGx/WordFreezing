@@ -124,32 +124,27 @@ async function submitAnswer() {
 
 // ===== 不会 =====
 async function dontKnow() {
-    if (isSubmitting) return;
-    // 直接当作所有节点都 miss
-    const fakeResults = currentNodes.map(n => ({
-        node_id: n.id,
-        hit: false,
-        title: n.title,
-        description: n.description,
-        formula: n.formula || '',
-        feedback: '未作答',
-        review: { status: 'learning', action: '未作答', stage: 0 },
-    }));
+    if (isSubmitting || !currentProblem) return;
+    isSubmitting = true;
+    document.getElementById('dontKnowBtn').disabled = true;
 
-    // 提交到后端处理复习状态
     try {
-        await fetch('/math/api/judge', {
+        const resp = await fetch('/math/api/dont-know', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                problem_id: currentProblem.id,
-                user_answer: '（不会做）',
-            }),
+            body: JSON.stringify({ problem_id: currentProblem.id }),
         });
-    } catch(e) {}
-
-    document.getElementById('answerArea').style.display = 'none';
-    renderJudgeResults({ node_results: fakeResults, overall: '点击了"不会"，看看关键节点吧。' });
+        const data = await resp.json();
+        if (data.success) {
+            document.getElementById('answerArea').style.display = 'none';
+            renderJudgeResults(data);
+        }
+    } catch(e) {
+        alert('请求失败，请重试');
+    } finally {
+        isSubmitting = false;
+        document.getElementById('dontKnowBtn').disabled = false;
+    }
 }
 
 // ===== 渲染评判结果 =====

@@ -90,7 +90,40 @@ def learn(book_id):
     return render_template('math/learn.html', book=bk)
 
 
-# ========== 删除题目 ==========
+# ========== 不会 / 删除 ==========
+@math_bp.route('/api/dont-know', methods=['POST'])
+def api_dont_know():
+    """用户点"不会"——所有节点标记为 miss，不调 AI 评判"""
+    data = request.get_json()
+    problem_id = data.get('problem_id')
+
+    problem = ProblemModel.get_by_id(problem_id)
+    if not problem:
+        return jsonify({'success': False, 'message': '题目不存在'})
+
+    nodes = problem.get('nodes', [])
+    review_results = []
+    node_results = []
+    for n in nodes:
+        rr = KeyNodeModel.process_review(n['id'], hit=False)
+        review_results.append(rr)
+        node_results.append({
+            'node_id': n['id'],
+            'hit': False,
+            'title': n['title'],
+            'description': n['description'],
+            'formula': n.get('formula', ''),
+            'feedback': '未作答',
+            'review': rr,
+        })
+
+    return jsonify({
+        'success': True,
+        'node_results': node_results,
+        'overall': '点击了"不会"，看看关键节点吧。',
+    })
+
+
 @math_bp.route('/api/problem/<int:problem_id>/delete', methods=['POST'])
 def api_delete_problem(problem_id):
     """删除题目"""
@@ -200,10 +233,11 @@ def api_judge():
     # 调用 AI 评判
     from services.ai_service import call_ai, extract_json
 
+    # 用序号（而非数据库 ID）发给 AI，避免 AI 返回的 node_id 与 DB id 不匹配
     node_list_text = '\n'.join(
-        f'{n["id"]}. [{n["title"]}] {n["description"]}'
+        f'{i+1}. [{n["title"]}] {n["description"]}'
         + (f' 关键公式: {n["formula"]}' if n.get('formula') else '')
-        for n in nodes
+        for i, n in enumerate(nodes)
     )
 
     system_prompt = f"""你是一位数学导师。以下是题目及其预设的关键节点。
@@ -234,6 +268,8 @@ def api_judge():
   ],
   "overall": "整体评价，1-2句话"
 }}
+
+注意：node_id 必须使用上方列出的序号（1, 2, 3...），一个都不能少。
 """
 
     result = call_ai(
@@ -250,11 +286,12 @@ def api_judge():
     if not parsed or 'node_results' not in parsed:
         return jsonify({'success': False, 'error': 'AI 响应解析失败'})
 
-    # 将 AI 返回的 node_id 映射回实际节点的信息
-    node_map = {n['id']: n for n in nodes}
+    # 用序号映射回实际节点信息（序号从 1 开始）
     for nr in parsed['node_results']:
-        node_info = node_map.get(nr['node_id'])
-        if node_info:
+        idx = nr.get('node_id', 0) - 1  # 序号 → 数组下标
+        if 0 <= idx < len(nodes):
+            node_info = nodes[idx]
+            nr['node_id'] = node_info['id']  # 替换为真实 DB id
             nr['title'] = node_info['title']
             nr['description'] = node_info['description']
             nr['formula'] = node_info.get('formula', '')
