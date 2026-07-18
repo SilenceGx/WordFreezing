@@ -98,6 +98,19 @@ def api_delete_problem(problem_id):
     return jsonify({'success': True, 'message': '已删除'})
 
 
+# ========== 统计 ==========
+@math_bp.route('/stats')
+def stats():
+    """统计页面"""
+    books = ProblemBookModel.get_all()
+    global_stats = ProblemBookModel.get_stats()
+    today_count = ProblemBookModel.get_today_review_count()
+    return render_template('math/stats.html',
+                          books=books,
+                          global_stats=global_stats,
+                          today_count=today_count)
+
+
 # ========== 题本详情 ==========
 @math_bp.route('/book/<int:book_id>')
 def book_detail(book_id):

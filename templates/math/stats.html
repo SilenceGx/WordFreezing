@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathPin — 统计</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/math.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="{{ url_for('math.index') }}" class="nav-brand">📐 MathPin</a>
+            <div class="nav-links">
+                <a href="{{ url_for('math.index') }}">题本</a>
+                <a href="{{ url_for('math.create') }}">创建</a>
+                <a href="{{ url_for('math.stats') }}" class="active">统计</a>
+                <a href="{{ url_for('index') }}">← 返回英语</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" style="max-width: 700px;">
+        <h1>📊 统计</h1>
+
+        <!-- 全局统计卡片 -->
+        <div class="stats-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+            <div class="stat-card">
+                <div class="stat-number">{{ global_stats.total }}</div>
+                <div class="stat-label">总题目数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color:var(--success);">{{ global_stats.mastered_count }}</div>
+                <div class="stat-label">✅ 已掌握</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color:var(--accent);">{{ today_count }}</div>
+                <div class="stat-label">今日待复习节点</div>
+            </div>
+        </div>
+
+        <!-- 题本进度列表 -->
+        <h2 style="font-size:1.1rem;margin-bottom:12px;">题本进度</h2>
+        <div class="wordbook-progress-list">
+            {% for bk in books %}
+            <a href="{{ url_for('math.book_detail', book_id=bk.id) }}" class="wordbook-progress-item">
+                <div class="progress-wordbook-name">📖 {{ bk.name }}</div>
+                <div class="progress-bar-wrapper">
+                    {% if bk.total > 0 %}
+                    {% set pct = (bk.mastered_count / bk.total * 100) | round %}
+                    {% else %}
+                    {% set pct = 0 %}
+                    {% endif %}
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:{{ pct }}%;"></div>
+                    </div>
+                    <span class="progress-text">{{ bk.mastered_count }}/{{ bk.total }} ({{ pct }}%)</span>
+                </div>
+                <div class="wordbook-stats" style="margin-top:4px;font-size:0.8rem;">
+                    <span class="stat-badge stat-new">新题 {{ bk.new_count }}</span>
+                    <span class="stat-badge stat-learning">复习 {{ bk.learning_count }}</span>
+                    <span class="stat-badge stat-mastered">✅ {{ bk.mastered_count }}</span>
+                </div>
+            </a>
+            {% else %}
+            <p style="text-align:center;color:var(--text-secondary);padding:40px;">
+                还没有题本。<br>
+                <a href="{{ url_for('math.create') }}" class="btn btn-primary" style="margin-top:12px;">+ 创建第一道题</a>
+            </p>
+            {% endfor %}
+        </div>
+    </main>
+
+    <style>
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+    </style>
+</body>
+</html>
