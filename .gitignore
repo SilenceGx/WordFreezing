@@ -3,6 +3,7 @@
 *.db-journal
 *.db-wal
 *.db-shm
+*.bak
 
 # Harry Potter source texts (removed from v1.0)
 HarryEnglish/
