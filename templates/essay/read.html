@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ essay.title }} - 阅读{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/essay.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="essay-read-page">
+    <!-- 顶部工具栏 -->
+    <div class="read-toolbar">
+        <a href="{{ url_for('essay.book_detail', book_id=essay.essay_book_id) }}" class="back-link">← 返回作文本</a>
+        <div class="read-toolbar-actions">
+            <a href="{{ url_for('essay.edit_page', essay_id=essay.id) }}" class="btn btn-sm btn-outline">✏️ 编辑</a>
+            <button class="btn btn-sm btn-outline btn-danger" onclick="deleteEssay({{ essay.id }})">🗑️ 删除</button>
+        </div>
+    </div>
+
+    <!-- 阅读正文 -->
+    <article class="essay-reader">
+        <header class="essay-reader-header">
+            <h1 class="essay-reader-title">{{ essay.title }}</h1>
+            {% if essay.author %}
+            <div class="essay-reader-author">✍️ {{ essay.author }}</div>
+            {% endif %}
+            <div class="essay-reader-meta">
+                <span>📅 {{ essay.created_at[:10] }}</span>
+                <span>📝 {{ essay.content.split()|length }} 词</span>
+            </div>
+        </header>
+
+        <div class="essay-reader-content">
+            {% for paragraph in essay.content.split('\n') %}
+                {% if paragraph.strip() %}
+                <p>{{ paragraph }}</p>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        {% if essay.summary %}
+        <div class="essay-reader-summary">
+            <h3>📌 笔记</h3>
+            <p>{{ essay.summary }}</p>
+        </div>
+        {% endif %}
+    </article>
+</div>
+
+<script>
+function deleteEssay(essayId) {
+    if (!confirm('确定要删除这篇作文吗？')) return;
+    fetch('{{ url_for("essay.api_delete_essay", essay_id=0) }}'.replace('/0', '/' + essayId), {
+        method: 'POST'
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            // 返回作文本
+            const bookId = {{ essay.essay_book_id }};
+            location.href = '{{ url_for("essay.book_detail", book_id=0) }}'.replace('/0', '/' + bookId);
+        } else {
+            alert(res.message);
+        }
+    });
+}
+</script>
+{% endblock %}

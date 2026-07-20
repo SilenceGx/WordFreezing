@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ book.name }} - 作文本{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/essay.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="essay-book-page">
+    <!-- 头部 -->
+    <div class="essay-book-header">
+        <a href="{{ url_for('index') }}" class="back-link">← 返回首页</a>
+        <div class="essay-book-title-row">
+            <h1>📝 {{ book.name }}</h1>
+            <span class="essay-count">{{ book.essay_count }} 篇</span>
+        </div>
+        <div class="essay-book-actions">
+            <a href="{{ url_for('essay.create_page', book_id=book.id) }}" class="btn btn-primary">✏️ 上传作文</a>
+            <button class="btn btn-outline" onclick="showEditBook()">✏️ 编辑名称</button>
+            <button class="btn btn-outline btn-danger" onclick="deleteBook({{ book.id }})">🗑️ 删除作文本</button>
+        </div>
+    </div>
+
+    <!-- 作文列表 -->
+    {% if essays %}
+    <div class="essay-list">
+        {% for essay in essays %}
+        <a href="{{ url_for('essay.read', essay_id=essay.id) }}" class="essay-card">
+            <div class="essay-card-body">
+                <h3>{{ essay.title }}</h3>
+                {% if essay.author %}
+                <div class="essay-meta">✍️ {{ essay.author }}</div>
+                {% endif %}
+                {% if essay.summary %}
+                <p class="essay-summary">{{ essay.summary }}</p>
+                {% endif %}
+            </div>
+            <div class="essay-card-footer">
+                <span class="essay-date">{{ essay.created_at[:10] }}</span>
+                <span class="essay-word-count">{{ essay.content.split()|length }} 词</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>还没有作文，上传第一篇吧！</p>
+        <a href="{{ url_for('essay.create_page', book_id=book.id) }}" class="btn btn-primary">✏️ 上传作文</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 编辑名称弹窗 -->
+<div class="modal-overlay" id="editBookModal" style="display:none" onclick="hideModal(event)">
+    <div class="modal">
+        <h3>编辑作文本名称</h3>
+        <input type="text" id="editBookName" value="{{ book.name }}" placeholder="输入名称..." autofocus>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideModal(event)">取消</button>
+            <button type="button" class="btn btn-primary" onclick="saveBookName({{ book.id }})">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showEditBook() {
+    document.getElementById('editBookModal').style.display = 'flex';
+    document.getElementById('editBookName').focus();
+}
+
+function hideModal(e) {
+    if (e.target === e.currentTarget || e.target.tagName === 'BUTTON') {
+        document.getElementById('editBookModal').style.display = 'none';
+    }
+}
+
+function saveBookName(bookId) {
+    const name = document.getElementById('editBookName').value.trim();
+    if (!name) return alert('请输入名称');
+    fetch('{{ url_for("essay.api_update_book") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({book_id: bookId, name: name})
+    }).then(r => r.json()).then(res => {
+        if (res.success) location.reload();
+        else alert(res.message);
+    });
+}
+
+function deleteBook(bookId) {
+    if (!confirm('确定要删除这个作文本及其所有作文吗？')) return;
+    fetch('{{ url_for("essay.api_delete_book", book_id=0) }}'.replace('/0', '/' + bookId), {
+        method: 'POST'
+    }).then(r => r.json()).then(res => {
+        if (res.success) location.href = '{{ url_for("index") }}';
+        else alert(res.message);
+    });
+}
+</script>
+{% endblock %}

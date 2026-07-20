@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}WordFreezing - 首页{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/essay.css') }}">
+{% endblock %}
 
 {% block content %}
 <div class="dashboard">
@@ -70,6 +73,37 @@
         {% endif %}
     </div>
 
+    <!-- 作文本列表 -->
+    <div class="section">
+        <div class="section-header">
+            <h2>📝 我的作文本</h2>
+            <div class="section-actions">
+                <button class="btn btn-outline" onclick="showCreateEssayBook()">➕ 创建作文本</button>
+            </div>
+        </div>
+
+        {% if essay_books %}
+        <div class="wordbook-grid">
+            {% for eb in essay_books %}
+            <a href="{{ url_for('essay.book_detail', book_id=eb.id) }}" class="essaybook-card">
+                <div class="essaybook-card-header">
+                    <h3>📝 {{ eb.name }}</h3>
+                    <span class="essaybook-count">{{ eb.essay_count }} 篇</span>
+                </div>
+                <p>阅读优秀作文，提升写作能力 ✨</p>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>还没有作文本，创建第一个吧！</p>
+            <div class="empty-actions">
+                <button class="btn btn-primary" onclick="showCreateEssayBook()">创建作文本</button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
     <!-- 全局统计 -->
     <div class="section">
         <div class="section-header">
@@ -117,6 +151,20 @@
     </div>
 </div>
 
+<!-- 创建作文本弹窗 -->
+<div class="modal-overlay" id="createEssayBookModal" style="display:none" onclick="hideModal(event)">
+    <div class="modal">
+        <h3>创建作文本</h3>
+        <div class="form-group">
+            <input type="text" id="essayBookName" placeholder="输入作文本名称..." required autofocus>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideModal(event)">取消</button>
+            <button type="button" class="btn btn-primary" onclick="createEssayBook()">创建</button>
+        </div>
+    </div>
+</div>
+
 <script>
 function showCreateWordbook() {
     document.getElementById('createModal').style.display = 'flex';
@@ -126,6 +174,7 @@ function showCreateWordbook() {
 function hideModal(e) {
     if (e.target === e.currentTarget || e.target.tagName === 'BUTTON' && e.target.type === 'button') {
         document.getElementById('createModal').style.display = 'none';
+        document.getElementById('createEssayBookModal').style.display = 'none';
     }
 }
 
@@ -144,5 +193,35 @@ function createWordbook(e) {
             }
         });
 }
+
+function showCreateEssayBook() {
+    document.getElementById('createEssayBookModal').style.display = 'flex';
+    document.getElementById('essayBookName').focus();
+}
+
+function createEssayBook() {
+    const name = document.getElementById('essayBookName').value.trim();
+    if (!name) return alert('请输入作文本名称');
+
+    fetch('{{ url_for("essay.api_create_book") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name})
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert(res.message);
+        }
+    });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('createEssayBookModal').style.display === 'flex') {
+        createEssayBook();
+    }
+});
 </script>
 {% endblock %}

@@ -17,6 +17,8 @@ from models.config import ConfigModel
 from services.ai_service import test_connection
 from routes.english import english_bp
 from routes.math import math_bp
+from routes.essay import essay_bp
+from routes.essay.models.essay_book import EssayBookModel
 
 
 def create_app():
@@ -33,6 +35,7 @@ def create_app():
     # ===== 注册蓝图 =====
     app.register_blueprint(english_bp)
     app.register_blueprint(math_bp)
+    app.register_blueprint(essay_bp)
 
     # ========== 首页 ==========
     @app.route('/')
@@ -41,10 +44,12 @@ def create_app():
         wordbooks = WordbookModel.get_all()
         stats = WordModel.get_stats()
         today_count = WordModel.get_today_review_count()
+        essay_books = EssayBookModel.get_all()
         return render_template('index.html',
                               wordbooks=wordbooks,
                               stats=stats,
-                              today_count=today_count)
+                              today_count=today_count,
+                              essay_books=essay_books)
 
     # ========== 统计页面 ==========
     @app.route('/stats')
@@ -95,12 +100,17 @@ def create_app():
         words = dicts_from_rows(db.execute('SELECT * FROM words').fetchall())
         configs = dicts_from_rows(db.execute('SELECT * FROM config').fetchall())
 
+        essay_books = dicts_from_rows(db.execute('SELECT * FROM essay_books').fetchall())
+        essays = dicts_from_rows(db.execute('SELECT * FROM essays').fetchall())
+
         backup = {
             'version': '1.0',
             'exported_at': datetime.now().isoformat(),
             'wordbooks': wordbooks,
             'words': words,
             'configs': configs,
+            'essay_books': essay_books,
+            'essays': essays,
         }
         filename = f"wordfreezing_backup_{datetime.now().strftime('%Y%m%d')}.json"
         resp = jsonify(backup)
@@ -122,6 +132,8 @@ def create_app():
         db = get_db()
         try:
             # 清空现有数据
+            db.execute('DELETE FROM essays')
+            db.execute('DELETE FROM essay_books')
             db.execute('DELETE FROM words')
             db.execute('DELETE FROM wordbooks')
             db.execute('DELETE FROM config')
@@ -145,6 +157,21 @@ def create_app():
                      w.get('review_stage', 0), w.get('correct_count', 0),
                      w.get('last_review_date', ''), w.get('next_review_date', ''), w.get('created_at', ''))
                 )
+
+            # 导入作文本
+            for eb in data.get('essay_books', []):
+                db.execute(
+                    'INSERT INTO essay_books (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)',
+                    (eb['id'], eb['name'],
+                     eb.get('created_at', datetime.now().isoformat()),
+                     eb.get('updated_at', datetime.now().isoformat())))
+
+            # 导入作文
+            for e in data.get('essays', []):
+                db.execute(
+                    'INSERT INTO essays (id, essay_book_id, title, author, content, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    (e['id'], e['essay_book_id'], e['title'], e.get('author', ''),
+                     e['content'], e.get('summary', ''), e.get('created_at', '')))
 
             # 导入配置
             for c in data.get('configs', []):

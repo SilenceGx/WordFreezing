@@ -87,3 +87,26 @@ CREATE TABLE IF NOT EXISTS key_nodes (
 CREATE INDEX IF NOT EXISTS idx_problems_book ON problems(book_id);
 CREATE INDEX IF NOT EXISTS idx_key_nodes_problem ON key_nodes(problem_id);
 CREATE INDEX IF NOT EXISTS idx_key_nodes_review ON key_nodes(next_review_date);
+
+-- ==================== 作文模块 ====================
+
+-- 作文本表
+CREATE TABLE IF NOT EXISTS essay_books (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+-- 作文表
+CREATE TABLE IF NOT EXISTS essays (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    essay_book_id INTEGER NOT NULL REFERENCES essay_books(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    author TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    summary TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_essays_book ON essays(essay_book_id);
