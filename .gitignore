@@ -12,6 +12,12 @@ HarryEnglish/
 .env
 *.env
 
+# AI 工具配置（本机开发用，不入库）
+.agents/
+.claude/
+skills-lock.json
+CLAUDE.md
+
 # Python
 __pycache__/
 *.pyc
