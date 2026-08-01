@@ -13,7 +13,6 @@ WordFreezing 换一个思路：不让你背单词，而是**让你用单词**。
 
 你在真实的语境中使用一个词，深刻理解它的用法与情景，才能真正掌握它。配合科学的**间隔重复**，让每个词在恰到好处的时刻再次出现——真正会用的词，才刻得进长期记忆。
 
-> 后来，这套「动手实践」的学习理念也延伸到了**优秀作文的收藏阅读**上。
 
 ---
 
@@ -68,7 +67,7 @@ learning(stage 0) → 通过 → stage 1（3 天）→ 通过 → stage 2（7 �
 
 **关键设计**
 
-- `services/ai_service.py` 统一抽象 DeepSeek / Ollama，提供 `call_ai` / `extract_json` 供各模块复用
+- `services/ai_service.py` 统一抽象 DeepSeek / Ollama，提供 `judge_sentence` / `judge_translation` / `batch_complete` 供各模块复用
 - 本地词典命中即零成本补全词性/音标/释义，批量未命中才一次性 AI 补全（省 token）
 - 评判提示词要求**不通过时必含目标单词的正确用法示范**，反馈即学习材料
 - 单文件应用演进为按模块拆分的 Flask Blueprint 架构（`routes/english`、`routes/essay`）
