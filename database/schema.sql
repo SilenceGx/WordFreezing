@@ -47,47 +47,6 @@ INSERT OR IGNORE INTO config (key, value) VALUES ('ollama_base_url', 'http://loc
 INSERT OR IGNORE INTO config (key, value) VALUES ('ollama_model', 'llama3');
 INSERT OR IGNORE INTO config (key, value) VALUES ('deepseek_base_url', 'https://api.deepseek.com');
 
--- ==================== 数学模块 ====================
-
--- 题本表
-CREATE TABLE IF NOT EXISTS problem_books (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
-);
-
--- 题目表
-CREATE TABLE IF NOT EXISTS problems (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL REFERENCES problem_books(id) ON DELETE CASCADE,
-    problem_text TEXT NOT NULL,       -- LaTeX 题目
-    solution_text TEXT NOT NULL,      -- LaTeX 完整解答
-    status TEXT NOT NULL DEFAULT 'new'
-        CHECK(status IN ('new','learning','mastered')),
-    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
-);
-
--- 关键节点表
-CREATE TABLE IF NOT EXISTS key_nodes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    problem_id INTEGER NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
-    node_order INTEGER NOT NULL,       -- 排序
-    title TEXT NOT NULL,               -- 节点标题："分部积分法选择"
-    description TEXT NOT NULL,         -- 方法描述
-    formula TEXT DEFAULT '',           -- 关键公式（LaTeX），可选
-    status TEXT NOT NULL DEFAULT 'new'
-        CHECK(status IN ('new','learning','mastered')),
-    review_stage INTEGER NOT NULL DEFAULT 0,
-    correct_count INTEGER NOT NULL DEFAULT 0,
-    last_review_date TEXT,
-    next_review_date TEXT
-);
-
--- 索引
-CREATE INDEX IF NOT EXISTS idx_problems_book ON problems(book_id);
-CREATE INDEX IF NOT EXISTS idx_key_nodes_problem ON key_nodes(problem_id);
-CREATE INDEX IF NOT EXISTS idx_key_nodes_review ON key_nodes(next_review_date);
-
 -- ==================== 作文模块 ====================
 
 -- 作文本表

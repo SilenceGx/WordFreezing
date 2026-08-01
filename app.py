@@ -16,7 +16,6 @@ from models.word import WordModel
 from models.config import ConfigModel
 from services.ai_service import test_connection
 from routes.english import english_bp
-from routes.math import math_bp
 from routes.essay import essay_bp
 from routes.essay.models.essay_book import EssayBookModel
 
@@ -34,7 +33,6 @@ def create_app():
 
     # ===== 注册蓝图 =====
     app.register_blueprint(english_bp)
-    app.register_blueprint(math_bp)
     app.register_blueprint(essay_bp)
 
     # ========== 首页 ==========

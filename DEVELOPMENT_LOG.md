@@ -1,36 +1,15 @@
 # 开发日志
 
-## 2026-07-18 — 蓝图重构 + 数学模块第零步
+## 2026-07-18 — 蓝图重构
 
 ### 架构重构
-- [x] 创建 `feat/math-module` 分支（基于 `feat/translation-mode`）
 - [x] 数据库 .bak 备份
 - [x] .gitignore 追加 `*.bak` 排除
 - [x] `app.py` 路由拆分为 Flask Blueprint 结构：
   - `routes/english/` — 英语模块蓝图（词本/单词/学习/导入/导出）
   - `app.py` 保留共享路由（首页/统计/设置/数据管理）
 - [x] 所有模板 `url_for()` 更新为蓝图限定名（`english.xxx`）
-- [x] 验证 26 条路由全部注册成功，英语数据零影响
-
-### 数学模块
-- [x] 数据库追加 `problem_books` / `problems` / `key_nodes` 三表
-- [x] Models 层：题本 CRUD + 题目 CRUD + 节点间隔重复算法
-- [x] `services/ai_service.py` 导出 `call_ai` / `extract_json` 公开函数
-- [x] 数学蓝图 `routes/math/`（前缀 `/math`），9 条路由注册成功
-- [x] 两步创建向导：题目+解答录入 → 关键节点标注（含 KaTeX 实时预览）
-- [x] 学习页：展示题目 → 用户写解答 → AI 逐节点评判 → 追问讨论
-- [x] 题本首页 + 题本详情页
-- [x] 导航栏追加「📐 数学」入口
-- [x] 数学统计页（全局统计 + 题本进度）
-- [x] 端到端验证：创建→学习→评判→讨论→统计全部通过
-- [x] 英语数据完好（1 词本 / 30 单词），零影响
-
-### 已修复
-- [x] AI 评判 `node_id` 映射 bug：AI 返回序号而非 DB id → 标题显示 undefined → 改用序号映射
-- [x] 新增 `/math/api/dont-know` 专用端点，不调 AI 直接全部标记 miss
-- [x] 学习页题目字体改为 Times New Roman、左对齐、保留换行
-- [x] 创建题本功能：首页「+ 创建题本」按钮 + 弹窗
-- [x] `sync_problem_status` 修正：首次节点进入 learning 时同步题目状态
+- [x] 验证全部路由注册成功，英语数据零影响
 
 ## 2026-07-15 — 翻译模式 + Git 版本管理
 
