@@ -33,11 +33,11 @@
             <div class="form-group">
                 <label>模型</label>
                 <input type="text" id="deepseekModel" list="deepseekModels"
-                       value="{{ config.get('deepseek_model', 'deepseek-chat') }}"
-                       placeholder="deepseek-chat / deepseek-reasoner">
+                       value="{{ config.get('deepseek_model', 'deepseek-v4-flash') }}"
+                       placeholder="deepseek-v4-flash / deepseek-v4-pro">
                 <datalist id="deepseekModels">
-                    <option value="deepseek-chat">DeepSeek-V3（默认，推荐）</option>
-                    <option value="deepseek-reasoner">DeepSeek-R1（推理）</option>
+                    <option value="deepseek-v4-flash">DeepSeek-V4 Flash（默认，推荐）</option>
+                    <option value="deepseek-v4-pro">DeepSeek-V4 Pro（更强，更贵）</option>
                 </datalist>
             </div>
         </div>

@@ -67,11 +67,15 @@ def _get_ai_config():
     provider = ConfigModel.get('ai_provider', 'deepseek')
 
     if provider == 'deepseek':
+        # 旧模型名映射（deepseek-chat/deepseek-reasoner 已于 2026-07-24 停用）
+        model = ConfigModel.get('deepseek_model', 'deepseek-v4-flash')
+        if model in ('deepseek-chat', 'deepseek-reasoner'):
+            model = 'deepseek-v4-flash'
         return {
             'provider': 'deepseek',
             'api_key': ConfigModel.get('deepseek_api_key', ''),
             'base_url': ConfigModel.get('deepseek_base_url', 'https://api.deepseek.com'),
-            'model': ConfigModel.get('deepseek_model', 'deepseek-chat'),
+            'model': model,
         }
     else:  # ollama
         return {
@@ -104,6 +108,8 @@ def _call_ai(messages, system_prompt, temperature=0.3, max_tokens=2000):
                     ],
                     'temperature': temperature,
                     'max_tokens': max_tokens,
+                    # V4 模型默认启用思考模式，显式关闭以保持原有非推理行为
+                    'thinking': {'type': 'disabled'},
                 },
                 timeout=60,
             )
@@ -164,11 +170,6 @@ def _extract_json(text):
             pass
 
     return None
-
-
-# 公开别名（数学模块等需要直接调用 AI 的场景）
-call_ai = _call_ai
-extract_json = _extract_json
 
 
 def judge_sentence(word, sentence):
