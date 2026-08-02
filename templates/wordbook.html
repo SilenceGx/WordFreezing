@@ -116,9 +116,13 @@
         {% if data.page > 1 %}
         <a href="?page={{ data.page - 1 }}&search={{ search }}&status={{ filter_status }}" class="page-link">←</a>
         {% endif %}
-        {% for p in range(1, data.total_pages + 1) %}
+        {% for p in page_list %}
+        {% if p is none %}
+        <span class="page-ellipsis">…</span>
+        {% else %}
         <a href="?page={{ p }}&search={{ search }}&status={{ filter_status }}"
            class="page-link {% if p == data.page %}active{% endif %}">{{ p }}</a>
+        {% endif %}
         {% endfor %}
         {% if data.page < data.total_pages %}
         <a href="?page={{ data.page + 1 }}&search={{ search }}&status={{ filter_status }}" class="page-link">→</a>

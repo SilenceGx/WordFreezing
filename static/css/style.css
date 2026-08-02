@@ -319,9 +319,19 @@ body {
 /* ===== 分页 ===== */
 .pagination {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     justify-content: center;
     margin-top: 20px;
+    max-width: 100%;
+}
+.page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px;
+    color: var(--text-muted, #666);
+    font-size: 0.9rem;
 }
 .page-link {
     display: inline-flex;
