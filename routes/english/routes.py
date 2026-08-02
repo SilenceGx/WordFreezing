@@ -14,6 +14,22 @@ from services.review_service import process_review, mark_mastered
 from . import english_bp
 
 
+def _ensure_examples(word):
+    """单词无例句时，调用 AI 现场生成并保存，供不通过时学习用
+
+    导入时可能没给例句（纯单词导入或 AI 补全失败），学习时若用户答错，
+    需要确保有例句可展示学习。
+    """
+    examples = word.get('examples') or []
+    if not examples:
+        ai_examples = generate_examples(word['word'])
+        if ai_examples:
+            examples = ai_examples
+            WordModel.update(word['id'], examples=examples)
+            word['examples'] = examples
+    return examples
+
+
 # ========== 词本操作 ==========
 @english_bp.route('/wordbook/create', methods=['POST'])
 def wordbook_create():
@@ -194,6 +210,10 @@ def learn_submit():
     # 更新学习状态
     review_result = process_review(word_id, passed)
 
+    # 造句不通过时确保有例句供学习（导入时可能没给例句，由 AI 现场生成）
+    if not passed:
+        _ensure_examples(word)
+
     response = {
         'success': True,
         'passed': passed,
@@ -265,18 +285,7 @@ def learn_dont_know():
     review_result = process_review(word_id, passed=False)
 
     # 如果没有例句，用 AI 生成
-    need_save = False
-    examples = word.get('examples', [])
-
-    if not examples:
-        ai_examples = generate_examples(word['word'])
-        if ai_examples:
-            examples = ai_examples
-            need_save = True
-
-    if need_save:
-        WordModel.update(word_id, examples=examples)
-        word['examples'] = examples
+    _ensure_examples(word)
 
     return jsonify({
         'success': True,
