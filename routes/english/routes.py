@@ -55,8 +55,18 @@ def wordbook_detail(wordbook_id):
     search = request.args.get('search', '', type=str)
     status = request.args.get('status', '', type=str)
     data = WordModel.get_by_wordbook(wordbook_id, search=search, status=status, page=page)
+
+    # 分页压缩：当前页前后各 2 页 + 首页尾页，缺口用 None 表示省略号
+    total_pages = data['total_pages']
+    page_list = []
+    for p in range(1, total_pages + 1):
+        if p == 1 or p == total_pages or abs(p - page) <= 2:
+            if page_list and p - page_list[-1] > 1:
+                page_list.append(None)
+            page_list.append(p)
+
     return render_template('wordbook.html', wordbook=wb, data=data,
-                          search=search, filter_status=status)
+                          search=search, filter_status=status, page_list=page_list)
 
 
 @english_bp.route('/wordbook/<int:wordbook_id>/edit', methods=['POST'])
