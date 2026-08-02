@@ -1,5 +1,21 @@
 # 开发日志
 
+## 2026-08-02 — 修复：造句不通过时若无例句则 AI 现场生成
+
+### 背景
+导入时可能没给例句（纯单词导入或 AI 补全失败），造句模式评判不通过时，
+前端 `showExamples()` 只在 `word.examples` 非空时才展示例句 → 无例句的词答错后没有例句可学习。
+
+### 已修复
+- [x] 抽出 `_ensure_examples(word)` 辅助函数：单词无例句时调用 AI 现场生成并入库（`services/ai_service.generate_examples`）
+- [x] `learn_submit` 造句评判不通过时调用 `_ensure_examples`，确保例句可供学习展示
+- [x] `learn_dont_know`（不认识）复用 `_ensure_examples`，消除重复代码
+
+### 版本
+- [x] main 提交 `319f835`，打 tag `v2.1.1` 并推送 GitHub
+
+---
+
 ## 2026-07-18 — 蓝图重构
 
 ### 架构重构
