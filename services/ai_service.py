@@ -9,6 +9,7 @@
 import requests
 import json
 import re
+import time
 from models.config import ConfigModel
 
 # 判断提示词模板
@@ -93,38 +94,48 @@ def _call_ai(messages, system_prompt, temperature=0.3, max_tokens=2000):
         api_key = config['api_key']
         if not api_key:
             return {'error': '请先在设置中配置 DeepSeek API Key'}
-        try:
-            resp = requests.post(
-                f"{config['base_url'].rstrip('/')}/v1/chat/completions",
-                headers={
-                    'Authorization': f'Bearer {api_key}',
-                    'Content-Type': 'application/json',
-                },
-                json={
-                    'model': config['model'],
-                    'messages': [
-                        {'role': 'system', 'content': system_prompt},
-                        *messages,
-                    ],
-                    'temperature': temperature,
-                    'max_tokens': max_tokens,
-                    # V4 模型默认启用思考模式，显式关闭以保持原有非推理行为
-                    'thinking': {'type': 'disabled'},
-                },
-                timeout=60,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            content = data['choices'][0]['message']['content']
-            return {'content': content}
-        except requests.exceptions.RequestException as e:
-            error_msg = str(e)
-            # 400 错误通常是模型名不合法
-            if '400' in error_msg:
-                return {'error': f'API 请求失败 (400): 模型名 "{config.get("model", "")}" 可能无效，请检查设置中的模型名称'}
-            return {'error': f'API 请求失败: {error_msg}'}
-        except (KeyError, json.JSONDecodeError) as e:
-            return {'error': f'API 响应解析失败: {str(e)}'}
+        # 瞬时错误（限流 429 / 服务暂不可用 5xx）自动重试，指数退避
+        retry_statuses = {429, 500, 502, 503, 504}
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                resp = requests.post(
+                    f"{config['base_url'].rstrip('/')}/v1/chat/completions",
+                    headers={
+                        'Authorization': f'Bearer {api_key}',
+                        'Content-Type': 'application/json',
+                    },
+                    json={
+                        'model': config['model'],
+                        'messages': [
+                            {'role': 'system', 'content': system_prompt},
+                            *messages,
+                        ],
+                        'temperature': temperature,
+                        'max_tokens': max_tokens,
+                        # V4 模型默认启用思考模式，显式关闭以保持原有非推理行为
+                        'thinking': {'type': 'disabled'},
+                    },
+                    timeout=60,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = data['choices'][0]['message']['content']
+                return {'content': content}
+            except requests.exceptions.HTTPError as e:
+                status = resp.status_code if resp is not None else 0
+                if status in retry_statuses and attempt < max_retries:
+                    time.sleep(2 ** attempt)  # 退避：1s → 2s
+                    continue
+                if status == 400:
+                    return {'error': f'API 请求失败 (400): 模型名 "{config.get("model", "")}" 可能无效，请检查设置中的模型名称'}
+                if status in retry_statuses:
+                    return {'error': f'AI 服务暂时不可用 (HTTP {status})，已自动重试 {max_retries} 次仍失败，请稍后再试'}
+                return {'error': f'API 请求失败: {str(e)}'}
+            except requests.exceptions.RequestException as e:
+                return {'error': f'API 请求失败: {str(e)}'}
+            except (KeyError, json.JSONDecodeError) as e:
+                return {'error': f'API 响应解析失败: {str(e)}'}
 
     else:  # Ollama
         try:
