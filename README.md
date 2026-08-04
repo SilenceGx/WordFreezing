@@ -68,6 +68,7 @@ learning(stage 0) → 通过 → stage 1（3 天）→ 通过 → stage 2（7 �
 **关键设计**
 
 - `services/ai_service.py` 统一抽象 DeepSeek / Ollama，提供 `judge_sentence` / `judge_translation` / `batch_complete` 供各模块复用
+- AI 调用对瞬时故障（429 限流 / 5xx 服务暂不可用）自动重试 + 指数退避，服务波动不打断学习
 - 本地词典命中即零成本补全词性/音标/释义，批量未命中才一次性 AI 补全（省 token）
 - 评判提示词要求**不通过时必含目标单词的正确用法示范**，反馈即学习材料
 - 单文件应用演进为按模块拆分的 Flask Blueprint 架构（`routes/english`、`routes/essay`）
